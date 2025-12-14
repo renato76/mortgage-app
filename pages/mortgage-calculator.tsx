@@ -1,8 +1,10 @@
 import MortgageResults from '@/components/MortgageResults/MortgageResults'
+import Chatbot, { ChatbotMortgageResults } from '@/components/Chatbot/Chatbot'
 import { calculateRemainingBalance } from '@/utils/calculateRemainingBalance'
 import { GetServerSideProps } from 'next'
 import { RadioGroup } from '@headlessui/react'
 import { useState } from 'react'
+
 // Define the props expected by the component
 interface MortgageProps {
   monthlyPayment?: number
@@ -16,8 +18,7 @@ interface MortgageProps {
   termYears?: string
 }
 
-// Here is the main client component, we destructure the props passed to here from getServerSideProps
-// And then display them however we want
+// Here is the main client component
 const MortgageCalculator = ({
   monthlyPayment,
   totalCost,
@@ -31,11 +32,15 @@ const MortgageCalculator = ({
 }: MortgageProps) => {
   console.log({ remainingBalance })
 
+  const [chatbotResults, setChatbotResults] =
+    useState<ChatbotMortgageResults | null>(null)
+
   const mortgageTypes = [
     { name: 'Remortgage', available: true },
     { name: 'Interest Only', available: true },
   ]
   const [selected, setSelected] = useState(mortgageTypes[0].name)
+
   return (
     <div className="mx-auto bg-[#e8e8e8] min-h-screen pb-24">
       <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-center mb-12 pt-8 text-white bg-blue-600 pb-8">
@@ -51,12 +56,7 @@ const MortgageCalculator = ({
               className="space-y-4"
             >
               <div className="py-2">
-                {/* <span className="block font-bold text-gray-900 text-lg lg:text-2xl ml-1 mb-4">
-                  Type of mortgage
-                </span> */}
                 <div className="flex flex-col justify-start space-y-6">
-                  {/* Repayment option */}
-
                   <RadioGroup value={selected} onChange={setSelected}>
                     <RadioGroup.Label className="block font-bold text-gray-900 text-lg lg:text-2xl ml-1 mb-4">
                       Type of mortgage
@@ -101,7 +101,6 @@ const MortgageCalculator = ({
                       ))}
                     </div>
                   </RadioGroup>
-                  {/* Interest Only option */}
                 </div>
               </div>
               <div className="py-2">
@@ -226,16 +225,21 @@ const MortgageCalculator = ({
                 Calculate
               </button>
             </form>
+
+            {/* Pass setChatbotResults to the chatbot */}
+            <Chatbot setChatbotResults={setChatbotResults} />
           </div>
 
-          {/* Display the calculation results if available */}
+          {/* Display the calculation results from EITHER form OR chatbot */}
           <div className="w-full md:w-1/2 px-4">
-            {monthlyPayment && (
+            {(monthlyPayment || chatbotResults) && (
               <MortgageResults
-                monthlyPayment={monthlyPayment}
-                totalCost={totalCost}
-                capitalPaid={capitalPaid}
-                interestPaid={interestPaid}
+                monthlyPayment={
+                  chatbotResults?.monthlyPayment || monthlyPayment
+                }
+                totalCost={chatbotResults?.totalCost || totalCost}
+                capitalPaid={chatbotResults?.capitalPaid || capitalPaid}
+                interestPaid={chatbotResults?.interestPaid || interestPaid}
               />
             )}
           </div>
@@ -259,19 +263,16 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
     isNaN(Number(interestRate)) ||
     isNaN(Number(termYears))
   ) {
-    return { props: {} } // Return empty props if any value is missing or invalid
+    return { props: {} }
   }
 
-  // Convert the query string values to numbers
   const loanAmount = Number(price) - Number(deposit)
-  const rate = Number(interestRate) / 100 / 12 // Monthly interest rate
+  const rate = Number(interestRate) / 100 / 12
   const numberOfMonths = Number(termYears) * 12
 
-  // Monthly payment calculation
   const monthlyPayment =
     (loanAmount * rate) / (1 - Math.pow(1 + rate, -numberOfMonths))
 
-  // Total cost, capital paid, and interest paid calculations
   const totalCost = monthlyPayment * numberOfMonths
   const capitalPaid = loanAmount
   const interestPaid = totalCost - capitalPaid
@@ -282,7 +283,6 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
     numberOfMonths / 12
   )
 
-  // Pass the calculated variables as props
   return {
     props: {
       monthlyPayment,
