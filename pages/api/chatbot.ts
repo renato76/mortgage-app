@@ -4,7 +4,7 @@ import { calculateRemainingBalance } from '@/utils/calculateRemainingBalance'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// Same calculation logic as your getServerSideProps
+// Same calculation logic as in getServerSideProps
 function calculateMortgageDetails(
   price: number,
   deposit: number,
