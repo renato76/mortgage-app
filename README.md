@@ -1,103 +1,91 @@
-## How to get Server Side Rendered Form working in Next JS using either the Pages Router, and using the newer App Router introduced from Next js version 13 onwards.
+# Mortgage Calculator
 
-## 1. Folder Structure for Pages Router
+A small UK mortgage calculator built with Next.js 15's Pages Router, React, and TypeScript. It provides a conventional form-based estimate and a chat interface that can gather mortgage details and calculate an estimate from a conversation.
 
-![alt text](image-1.png)
+## Features
 
-Explanation:
-pages/index.tsx: Contains the homepage and the form.
-pages/results.tsx: Handles query parameters and renders results. Uses getServerSideProps to calculate and display the results.
-pages/api/calculate.ts: (Optional) If you want an API route to handle calculations instead of server-side props.
+- **Mortgage calculator:** Enter a property price, deposit, annual interest rate, and term to calculate an estimated monthly repayment, total paid, principal, and interest.
+- **Chatbot:** Ask mortgage questions conversationally. The assistant requests any missing calculation inputs and can calculate results once it has the property price, deposit, interest rate, and term.
+- **Shared results display:** Chatbot calculations appear in the same results panel as calculations from the form.
+- **Server-rendered form results:** The form uses a GET request, so its values are represented in the page URL and calculations are performed in `getServerSideProps`.
 
-## 2. Folder Structure for App Router
+## Run locally
 
-![alt text](image.png)
+Requirements: Node.js and npm.
 
-Explanation:
-app/layout.tsx: The root layout that wraps all pages. Includes components like Header or Footer.
-app/page.tsx: The homepage with the form.
-app/results/page.tsx: Handles query parameters and renders the calculation results. You can use Server Components and async/await for calculations.
-app/results/calculate.ts: (Optional) A server-side function or helper for calculations.
+1. Install dependencies:
 
-![alt text](image-2.png)
+   ```bash
+   npm install
+   ```
 
-## 1. Using Pages Router
+2. Add an OpenAI API key to a local environment file named `.env.local`:
 
-Basically we have a file called mortgage-calculator.tsx in pages directory, which will do both server side and client side rendering.
+   ```env
+   OPENAI_API_KEY=your_openai_api_key
+   ```
 
-The client side form is on this file and allows users to add their values in the inputs.
-Since we are using method="get" in the <form> this means Next.js, sends form data as a query string appended to the URL.
+   The key is read only by the server-side API route. Do not expose it through a `NEXT_PUBLIC_` variable or commit it to source control.
 
-## How It Works
+3. Start the development server:
 
-Form Submission: When the user submits the form, the browser constructs a query string from the form input names and their values, appending it to the URL specified in the action attribute of the <form>.
+   ```bash
+   npm run dev
+   ```
 
-When submitted, the browser sends the request to:
-/mortgage-calculator?principal=200000&deposit=20000&interestRate=5&termYears=30
+4. Open [http://localhost:3000](http://localhost:3000), then choose **Go to Mortgage Calculator**.
 
-### Server-Side Handling in Next.js:
+Other available scripts:
 
-The mortgage-calculator page can access the query string using getServerSideProps, which processes the data on the server.
+```bash
+npm run build
+npm start
+npm run lint
+```
 
-Example pages/mortgage-calculator.tsx:
+`npm start` serves a production build, so run `npm run build` first.
 
-### Client-Side Routing:
+## How the calculator works
 
-If the form’s action attribute is set to a page within your Next.js app (e.g., /mortgage-calculator), the Next.js client-side router handles the navigation seamlessly.
+The form on `/mortgage-calculator` submits `price`, `deposit`, `interestRate`, and `termYears` as query parameters. For example:
 
-![alt text](image-3.png)
+```text
+/mortgage-calculator?price=200000&deposit=20000&interestRate=5&termYears=30
+```
 
-# Mortgage Results Calculation
+`getServerSideProps` reads and validates those values, then calculates the loan amount, monthly repayment, total cost, capital paid, interest paid, and an annual remaining-balance schedule. The results component currently displays the first four figures; the remaining-balance schedule is calculated but not displayed.
 
-This formula calculates the fixed monthly payment for a loan, assuming a constant interest rate over the term.
+The repayment calculation assumes a fixed annual interest rate and regular monthly repayments over the full term. It is an estimate and does not include fees, taxes, insurance, rate changes, or lender-specific affordability rules.
 
-![alt text](image-4.png)
+## How the chatbot works
 
-For example, if:
+1. The chat component keeps the conversation in React state for as long as that component remains mounted.
+2. On send, it posts the conversation to `POST /api/chatbot` as JSON. The browser does not call OpenAI directly.
+3. The API route sends the conversation to OpenAI using the `gpt-3.5-turbo` model and provides a `calculateMortgagePayment` function tool. The assistant is instructed to collect the four required values and use UK mortgage terminology and pounds sterling.
+4. If the assistant asks a follow-up question, the API returns its message and the chat displays it. When the assistant requests the calculation tool, the API parses the tool arguments, performs the calculation on the server, and returns both a confirmation message and the results.
+5. The chat passes those results to the page, which renders them in the mortgage results panel.
 
-- **Loan Amount (L)** = £200,000
-- **Annual Interest Rate** = 5% (_r = 0.05 / 12 = 0.004167_)
-- **Term** = 30 years (_n = 30 × 12 = 360_)
+The tool is executed directly by the API route; this is not a general-purpose tool-execution loop. The chatbot currently calculates repayment, total cost, capital paid, and interest paid. Although its server calculation also derives an annual remaining balance, that figure is not sent to the chat results panel.
 
-The monthly payment is £1,084.28.
+## Project structure
 
-# Differences between Next JS version 13 and version 15 in how it handles CSS in Dev mode
+```text
+pages/
+  index.tsx                    Home page linking to the calculator
+  mortgage-calculator.tsx      Calculator form and server-side calculation
+  api/chatbot.ts               OpenAI chat endpoint and calculation tool
+components/
+  Chatbot/Chatbot.tsx          Chat UI and API client
+  MortgageResults/             Shared results display
+utils/
+  calculateRemainingBalance.ts Annual balance schedule helper
+styles/
+  globals.css                  Global Tailwind styles
+```
 
-### 1. CSS in Development with Pages Router (Next.js 13.x and earlier)
+## Current scope
 
-In **Pages Router**, CSS styles are applied correctly only after you run the production build (`next build` and `next start`). This is because in development mode (`next dev`), Next.js doesn't optimize CSS as much as it would in production to speed up the build process. It may rely on server-side rendering of CSS only when it's fully built for production, which is why you might notice missing or unstyled pages during local development.
-
-**Why is this the case?**  
-Next.js optimizes assets, including CSS, only when it creates a production build (via `next build` and `next start`), as this involves bundling and minimizing your CSS for better performance in production. In dev mode, the CSS may be served dynamically but isn't fully optimized.
-
----
-
-### 2. CSS in Development with App Router (Next.js 13/15+)
-
-In **App Router** (the new routing system introduced in Next.js 13), CSS is handled differently. It works more seamlessly in development mode (`next dev`) because Next.js 13+ (and now Next.js 15) includes more automatic CSS optimization, which includes better CSS-in-JS handling and CSS modules. These improvements ensure that styles are scoped correctly and that the app loads faster without needing a build step in development.
-
-**Why does it work in dev?**  
-With the App Router, Next.js introduced improvements in how it handles CSS for server-side rendered and statically generated pages. Since the App Router is designed to support more advanced features like server components, static rendering, and automatic CSS handling, it doesn't require a full production build to properly apply styles in development mode.
-
----
-
-### 3. Automatic Static Optimization
-
-The **App Router** also benefits from automatic static optimization, meaning it pre-renders pages without the need for manual static file generation. This feature is more aggressive with the App Router, allowing better development experience with CSS and JavaScript, without the need to build first.
-
----
-
-### 4. Changes in Next.js 15
-
-With **Next.js 15** (and the ongoing work to improve both Pages Router and App Router), there is a stronger focus on optimizing CSS out-of-the-box, even during development. So, you’ll see better CSS handling and loading without needing to run a full production build in most cases when using the App Router.
-
----
-
-### To summarize:
-
-- **Pages Router**: In development mode, CSS might not be fully optimized until you run a production build (`next build` and `next start`). This can lead to the issue you're seeing where the CSS isn't rendered until after building the app.
-
-- **App Router**: In development mode, Next.js 13/15+ handles CSS more efficiently, even before the production build is made, giving a better experience for developers.
-
-This **App Router behavior** is part of the new optimizations in Next.js 13 and 15 that improve CSS loading and rendering in development mode, and is indeed a new feature that wasn't available in the same way in earlier versions of Next.js.
-
+- The **Remortgage** and **Interest Only** options are displayed in the form, but currently do not change the calculation. Both the form and chatbot use the standard repayment-mortgage formula.
+- Form calculations are rendered by the server from URL query values. Chatbot results are held in client state and are not saved; refreshing the page clears the conversation and chat-generated results.
+- The chatbot requires a valid `OPENAI_API_KEY`. If the key is missing or the OpenAI request fails, the API route returns an error and the chat displays a generic failure message.
+- This is an informational calculator, not financial advice or a mortgage offer. Users should confirm figures with a qualified adviser or lender.
