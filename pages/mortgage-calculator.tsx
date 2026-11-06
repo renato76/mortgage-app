@@ -4,7 +4,6 @@ import { GetServerSideProps } from 'next'
 import { RadioGroup } from '@headlessui/react'
 import { useState } from 'react'
 
-// Define the props expected by the component
 interface MortgageProps {
   monthlyPayment?: number
   totalCost?: number
@@ -17,7 +16,6 @@ interface MortgageProps {
   termYears?: string
 }
 
-// Here is the main client component
 const MortgageCalculator = ({
   monthlyPayment,
   totalCost,
@@ -240,7 +238,6 @@ const MortgageCalculator = ({
   )
 }
 
-// Server-side calculation using getServerSideProps
 export const getServerSideProps: GetServerSideProps = async ({ query }) => {
   const { price, deposit, interestRate, termYears } = query
 
