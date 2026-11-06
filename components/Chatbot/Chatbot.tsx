@@ -128,7 +128,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   }
 
   return (
-    <div className="mt-8 p-4 border rounded bg-white">
+    <div className="mt-8 p-4 border rounded bg-white text-gray-900">
       <h3 className="font-bold mb-2">Mortgage Chatbot</h3>
 
       <div className="h-96 overflow-y-auto border p-2 mb-2 bg-gray-50">
@@ -138,7 +138,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
             <div
               key={idx}
               className={`mb-1 ${
-                msg.role === 'user' ? 'text-blue-600' : 'text-green-600'
+                msg.role === 'user' ? 'text-blue-600' : 'text-green-700'
               }`}
             >
               <strong>{msg.role === 'user' ? 'You' : 'Bot'}:</strong>{' '}
@@ -169,7 +169,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Ask about mortgages..."
-        className="w-full p-2 border rounded mb-2"
+        className="w-full p-2 border rounded mb-2 bg-white"
         onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
       />
 

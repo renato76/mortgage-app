@@ -1,5 +1,5 @@
 import MortgageResults from '@/components/MortgageResults/MortgageResults'
-import { calculateRemainingBalance } from '@/utils/calculateRemainingBalance'
+import { calculateMortgageDetails } from '@/utils/calculateMortgageDetails'
 import { GetServerSideProps } from 'next'
 import { RadioGroup } from '@headlessui/react'
 import { useState } from 'react'
@@ -254,30 +254,16 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
     return { props: {} }
   }
 
-  const loanAmount = Number(price) - Number(deposit)
-  const rate = Number(interestRate) / 100 / 12
-  const numberOfMonths = Number(termYears) * 12
-
-  const monthlyPayment =
-    (loanAmount * rate) / (1 - Math.pow(1 + rate, -numberOfMonths))
-
-  const totalCost = monthlyPayment * numberOfMonths
-  const capitalPaid = loanAmount
-  const interestPaid = totalCost - capitalPaid
-
-  const remainingBalance = calculateRemainingBalance(
-    loanAmount,
-    rate,
-    numberOfMonths / 12,
+  const results = calculateMortgageDetails(
+    Number(price),
+    Number(deposit),
+    Number(interestRate),
+    Number(termYears)
   )
 
   return {
     props: {
-      monthlyPayment,
-      totalCost,
-      capitalPaid,
-      interestPaid,
-      remainingBalance,
+      ...results,
       price: price || '',
       deposit: deposit || '',
       interestRate: interestRate || '',

@@ -21,7 +21,7 @@ const MortgageResults = ({
   }
 
   return (
-    <div className="mt-8 md:mt-0 p-6 border-[14px] border-gray-300 rounded-lg h-5/6">
+    <div className="mt-8 md:mt-0 p-6 border-[14px] border-gray-300 rounded-lg h-5/6 text-gray-900">
       <h2 className="text-2xl font-semibold mb-4">Mortgage Results</h2>
       <p className="text-lg">
         Monthly Payment:{' '}

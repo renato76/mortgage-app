@@ -36,7 +36,7 @@ const MortgageAssistant = () => {
           {/* Results Section - Shows both original and scenario results for comparison */}
           <div className="w-full lg:w-1/2 px-4 pb-12">
             {comparison ? (
-              <div className="border rounded p-4 bg-white">
+              <div className="border rounded p-4 bg-white text-gray-900">
                 <h3 className="font-bold text-lg mb-4">Deposit Comparison</h3>
 
                 {/* Property Price */}
