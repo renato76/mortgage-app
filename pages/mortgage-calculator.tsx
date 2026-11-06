@@ -1,5 +1,4 @@
 import MortgageResults from '@/components/MortgageResults/MortgageResults'
-import Chatbot, { ChatbotMortgageResults } from '@/components/Chatbot/Chatbot'
 import { calculateRemainingBalance } from '@/utils/calculateRemainingBalance'
 import { GetServerSideProps } from 'next'
 import { RadioGroup } from '@headlessui/react'
@@ -31,9 +30,6 @@ const MortgageCalculator = ({
   termYears,
 }: MortgageProps) => {
   console.log({ remainingBalance })
-
-  const [chatbotResults, setChatbotResults] =
-    useState<ChatbotMortgageResults | null>(null)
 
   const mortgageTypes = [
     { name: 'Remortgage', available: true },
@@ -225,21 +221,16 @@ const MortgageCalculator = ({
                 Calculate
               </button>
             </form>
-
-            {/* Pass setChatbotResults to the chatbot */}
-            <Chatbot setChatbotResults={setChatbotResults} />
           </div>
 
-          {/* Display the calculation results from EITHER form OR chatbot */}
+          {/* Display the calculation results from form submission */}
           <div className="w-full md:w-1/2 px-4">
-            {(monthlyPayment || chatbotResults) && (
+            {monthlyPayment && (
               <MortgageResults
-                monthlyPayment={
-                  chatbotResults?.monthlyPayment || monthlyPayment
-                }
-                totalCost={chatbotResults?.totalCost || totalCost}
-                capitalPaid={chatbotResults?.capitalPaid || capitalPaid}
-                interestPaid={chatbotResults?.interestPaid || interestPaid}
+                monthlyPayment={monthlyPayment}
+                totalCost={totalCost}
+                capitalPaid={capitalPaid}
+                interestPaid={interestPaid}
               />
             )}
           </div>
@@ -280,7 +271,7 @@ export const getServerSideProps: GetServerSideProps = async ({ query }) => {
   const remainingBalance = calculateRemainingBalance(
     loanAmount,
     rate,
-    numberOfMonths / 12
+    numberOfMonths / 12,
   )
 
   return {

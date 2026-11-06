@@ -1,48 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { OpenAI } from 'openai'
-import { calculateRemainingBalance } from '@/utils/calculateRemainingBalance'
+import { calculateMortgageDetails } from '../../utils/calculateMortgageDetails'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
-// Same calculation logic as your getServerSideProps
-function calculateMortgageDetails(
-  price: number,
-  deposit: number,
-  interestRate: number,
-  termYears: number
-) {
-  const loanAmount = price - deposit
-  const rate = interestRate / 100 / 12
-  const numberOfMonths = termYears * 12
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
 
-  const monthlyPayment =
-    (loanAmount * rate) / (1 - Math.pow(1 + rate, -numberOfMonths))
-  const totalCost = monthlyPayment * numberOfMonths
-  const capitalPaid = loanAmount
-  const interestPaid = totalCost - capitalPaid
-
-  const remainingBalance = calculateRemainingBalance(
-    loanAmount,
-    rate,
-    numberOfMonths / 12
-  )
-
-  return {
-    monthlyPayment,
-    totalCost,
-    capitalPaid,
-    interestPaid,
-    remainingBalance,
-  }
-}
-
-const functions = [
+/**
+ * OpenAI function definition
+ * Used ONLY to detect when base mortgage info is complete
+ */
+const tools = [
   {
     type: 'function' as const,
     function: {
       name: 'calculateMortgagePayment',
       description:
-        'Calculate UK mortgage payments when user provides ALL required info: property price, deposit, interest rate and term',
+        'Calculate UK mortgage payments when user provides property price, deposit, interest rate and term',
       parameters: {
         type: 'object',
         properties: {
@@ -50,11 +26,11 @@ const functions = [
           deposit: { type: 'number', description: 'Deposit amount in £' },
           interestRate: {
             type: 'number',
-            description: 'Annual interest rate as percentage (e.g. 5.5)',
+            description: 'Annual interest rate percentage (e.g. 5.5)',
           },
           termYears: {
             type: 'number',
-            description: 'Loan term in years (e.g. 25)',
+            description: 'Mortgage term in years (e.g. 25)',
           },
         },
         required: ['price', 'deposit', 'interestRate', 'termYears'],
@@ -74,62 +50,201 @@ export default async function handler(
   const { messages } = req.body
 
   try {
+    // HANDLE CTA SELECTIONS FIRST (before calling OpenAI)
+    const lastMessage = messages[messages.length - 1]
+    console.log('🔍 Last message:', lastMessage.content)
+
+    if (lastMessage.content.startsWith('CTA_SELECTION:')) {
+      const [, type, value] = lastMessage.content.split(':')
+      console.log('🎯 CTA detected - Type:', type, 'Value:', value)
+
+      if (type === 'deposit_scenarios' && value === 'show_deposit_options') {
+        console.log('📋 Showing deposit options menu')
+        return res.status(200).json({
+          state: 'scenario_selection',
+          message: 'Choose how much to increase your deposit by:',
+          ctaPrompt: {
+            question: 'Increase deposit by:',
+            type: 'deposit_amount_selection',
+            options: [
+              { label: '£10,000', value: '10000' },
+              { label: '£15,000', value: '15000' },
+              { label: '£20,000', value: '20000' },
+            ],
+          },
+        })
+      }
+
+      if (type === 'deposit_amount_selection') {
+        const increaseAmount = parseInt(value)
+
+        interface Message {
+          role: string
+          content: string
+          originalInputs?: {
+            price: number
+            deposit: number
+            interestRate: number
+            termYears: number
+          }
+        }
+
+        const originalInputs = (messages as Message[])
+          .map((m) => m.originalInputs)
+          .find(Boolean)
+
+        if (!originalInputs) {
+          return res.status(400).json({
+            error: 'Missing original mortgage inputs',
+          })
+        }
+
+        const { price, deposit, interestRate, termYears } = originalInputs
+
+        // Original calculation
+        const originalResults = calculateMortgageDetails(
+          price,
+          deposit,
+          interestRate,
+          termYears
+        )
+
+        // Updated calculation
+        const newDeposit = deposit + increaseAmount
+
+        const updatedResults = calculateMortgageDetails(
+          price,
+          newDeposit,
+          interestRate,
+          termYears
+        )
+
+        return res.status(200).json({
+          state: 'complete',
+          message: `Here's how increasing your deposit by £${increaseAmount.toLocaleString()} affects your mortgage.`,
+          comparison: {
+            originalPrice: originalInputs.price,
+            original: {
+              label: 'Current deposit',
+              results: originalResults,
+            },
+            scenario: {
+              label: `Deposit + £${increaseAmount.toLocaleString()}`,
+              results: updatedResults,
+            },
+            delta: {
+              monthlyPayment:
+                updatedResults.monthlyPayment - originalResults.monthlyPayment,
+              totalInterest:
+                updatedResults.interestPaid - originalResults.interestPaid,
+              totalCost: updatedResults.totalCost - originalResults.totalCost,
+            },
+          },
+        })
+      }
+    } else {
+      console.log('💬 Normal conversation flow - proceeding to OpenAI')
+    }
+
+    /**
+     * NORMAL FLOW: Ask OpenAI what to do next
+     * - ask for missing info
+     * - OR call calculateMortgagePayment
+     */
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: OPENAI_MODEL,
       messages: [
         {
           role: 'system',
           content:
-            'You are a helpful UK mortgage advisor. To calculate mortgage payments, you need: property price (£), deposit (£), interest rate (%), and loan term (years). Ask for missing information conversationally. Once you have ALL four, use the calculateMortgagePayment function. Use £ currency and UK terminology.',
+            'You are a helpful UK mortgage assistant. Ask conversationally for missing information. Once you have property price (£), deposit (£), interest rate (%), and term (years), call calculateMortgagePayment. Use UK terminology and £.',
         },
         ...messages,
       ],
-      tools: functions,
+      tools,
       tool_choice: 'auto',
     })
 
-    const message = completion.choices[0].message
+    const assistantMessage = completion.choices[0].message
 
-    // Check if AI has all info and wants to calculate
-    if (message.tool_calls && message.tool_calls.length > 0) {
-      const toolCall = message.tool_calls[0]
+    /**
+     * CASE 1: OpenAI decides base mortgage info is complete
+     */
+    if (assistantMessage.tool_calls?.length) {
+      const toolCall = assistantMessage.tool_calls[0]
 
       if (
         toolCall.type === 'function' &&
         toolCall.function.name === 'calculateMortgagePayment'
       ) {
         const args = JSON.parse(toolCall.function.arguments)
-        console.log('Calculating mortgage with:', args)
 
-        // Actually calculate the mortgage
-        const results = calculateMortgageDetails(
+        /**
+         * Base mortgage calculation (deterministic)
+         */
+        const baseResults = calculateMortgageDetails(
           args.price,
           args.deposit,
           args.interestRate,
           args.termYears
         )
 
-        // Return results that frontend can use for MortgageResults component
-        res.status(200).json({
-          reply: {
-            role: 'assistant',
-            content:
-              "Perfect! I've calculated your mortgage details based on the information you provided.",
+        /**
+         * ✅ RETURN BASE RESULTS + CTA (NO SCENARIO YET)
+         */
+        return res.status(200).json({
+          state: 'complete',
+
+          message: "I've calculated your mortgage details.",
+
+          mortgageResults: baseResults,
+
+          ctaPrompt: {
+            question:
+              'Would you like to see how increasing your deposit affects your monthly payments?',
+            type: 'deposit_scenarios',
+            options: [
+              { label: 'Yes, show me', value: 'show_deposit_options' },
+              { label: "No, I'm good", value: 'decline' },
+            ],
           },
-          mortgageResults: results,
+          originalInputs: {
+            price: args.price,
+            deposit: args.deposit,
+            interestRate: args.interestRate,
+            termYears: args.termYears,
+          },
         })
-      } else {
-        res.status(200).json({ reply: message })
       }
-    } else {
-      // AI is still asking for more information
-      res.status(200).json({ reply: message })
     }
-  } catch (error) {
-    console.error('OpenAI error:', error)
-    res.status(500).json({
-      error: 'Failed to fetch response',
-      details: error instanceof Error ? error.message : 'Unknown error',
+
+    /**
+     * CASE 2: OpenAI is still collecting base inputs
+     */
+    return res.status(200).json({
+      state: 'collecting',
+      message: assistantMessage.content,
+    })
+  } catch (error: unknown) {
+    console.error('Chatbot error:', error)
+
+    const errorWithCode = error as {
+      code?: string
+      status?: number
+    }
+
+    if (
+      errorWithCode.code === 'model_not_found' ||
+      errorWithCode.status === 404
+    ) {
+      return res.status(400).json({
+        error:
+          `OpenAI model "${OPENAI_MODEL}" is not available for this account. Set OPENAI_MODEL to a valid model such as "gpt-4o-mini".`,
+      })
+    }
+
+    return res.status(500).json({
+      error: 'Failed to process chatbot request',
     })
   }
 }
