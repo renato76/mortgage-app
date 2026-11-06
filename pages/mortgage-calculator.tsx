@@ -4,8 +4,6 @@ import {
   MortgageValidationError,
 } from '@/utils/calculateMortgageDetails'
 import { GetServerSideProps } from 'next'
-import { RadioGroup } from '@headlessui/react'
-import { useState } from 'react'
 
 interface MortgageProps {
   error?: string
@@ -36,12 +34,6 @@ const MortgageCalculator = ({
 }: MortgageProps) => {
   console.log({ remainingBalance })
 
-  const mortgageTypes = [
-    { name: 'Remortgage', available: true },
-    { name: 'Interest Only', available: true },
-  ]
-  const [selected, setSelected] = useState(mortgageTypes[0].name)
-
   return (
     <div className="mx-auto bg-[#e8e8e8] min-h-screen pb-24">
       <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-center mb-12 pt-8 text-white bg-blue-600 pb-8">
@@ -62,54 +54,6 @@ const MortgageCalculator = ({
               className="space-y-4"
             >
               <div className="py-2">
-                <div className="flex flex-col justify-start space-y-6">
-                  <RadioGroup value={selected} onChange={setSelected}>
-                    <RadioGroup.Label className="block font-bold text-gray-900 text-lg lg:text-2xl ml-1 mb-4">
-                      Type of mortgage
-                    </RadioGroup.Label>
-                    <div className="flex flex-col space-y-4">
-                      {mortgageTypes.map((mortgageType) => (
-                        <RadioGroup.Option
-                          key={mortgageType.name}
-                          value={mortgageType.name}
-                          disabled={!mortgageType.available}
-                          className={({ checked, disabled }) =>
-                            [
-                              'flex items-center gap-2 cursor-pointer rounded px-2 py-2',
-                              checked
-                                ? 'border-2 border-blue-600 bg-blue-50'
-                                : 'border border-gray-300',
-                              disabled ? 'opacity-50 cursor-not-allowed' : '',
-                            ].join(' ')
-                          }
-                        >
-                          {({ checked }) => (
-                            <>
-                              <span
-                                className={[
-                                  'inline-block w-5 h-5 rounded-full border flex items-center justify-center',
-                                  checked
-                                    ? 'border-blue-600'
-                                    : 'border-gray-400',
-                                  'mr-2',
-                                ].join(' ')}
-                              >
-                                {checked && (
-                                  <span className="w-3 h-3 bg-blue-600 rounded-full" />
-                                )}
-                              </span>
-                              <span className="font-bold text-gray-900 text-lg">
-                                {mortgageType.name}
-                              </span>
-                            </>
-                          )}
-                        </RadioGroup.Option>
-                      ))}
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
-              <div className="py-2">
                 <label
                   htmlFor="price"
                   className="block font-bold text-gray-900 text-lg lg:text-2xl ml-1 mb-2"
@@ -117,7 +61,7 @@ const MortgageCalculator = ({
                   Property Price
                 </label>
                 <p className="ml-1 mb-2 text-gray-700">
-                  Enter the property price or the re-mortgage amount.
+                  Enter the purchase price of the property.
                 </p>
                 <div className="flex items-stretch">
                   <span className="bg-gray-200 px-3 py-3  text-gray-600 text-lg flex items-center rounded-l-[10px]">
@@ -143,7 +87,7 @@ const MortgageCalculator = ({
                   Deposit
                 </label>
                 <p className="ml-1 mb-2 text-gray-700">
-                  If you&apos;re remortgaging, this does not apply.
+                  The amount of the property price you will pay upfront.
                 </p>
                 <div className="flex items-stretch">
                   <span className="bg-gray-200 px-3 py-3  text-gray-600 text-lg flex items-center rounded-l-[10px]">

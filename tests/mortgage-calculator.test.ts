@@ -1,6 +1,8 @@
 import { expect, test } from '@jest/globals'
 import type { GetServerSidePropsContext } from 'next'
-import { getServerSideProps } from '../pages/mortgage-calculator'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import MortgageCalculator, { getServerSideProps } from '../pages/mortgage-calculator'
 import { calculateMortgageDetails } from '../utils/calculateMortgageDetails'
 
 async function submit(query: GetServerSidePropsContext['query']) {
@@ -11,6 +13,16 @@ async function submit(query: GetServerSidePropsContext['query']) {
 
 test('initial calculator view has no results or validation errors', async () => {
   expect(await submit({})).toEqual({})
+})
+
+test('does not offer unsupported mortgage types', () => {
+  const html = renderToStaticMarkup(createElement(MortgageCalculator))
+
+  expect(html).not.toContain('Remortgage')
+  expect(html).not.toContain('Interest Only')
+  expect(html).not.toContain('radiogroup')
+  expect(html).toContain('Property Price')
+  expect(html).toContain('Calculate')
 })
 
 test.each([0, 5])('form uses the shared engine for a %f%% mortgage', async (rate) => {

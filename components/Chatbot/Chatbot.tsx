@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 interface MortgageInputs {
   price: number
@@ -59,23 +59,21 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [ctaPrompt, setCtaPrompt] = useState<CtaPrompt | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [failedMessages, setFailedMessages] = useState<ChatMessage[] | null>(null)
+  const requestInFlight = useRef(false)
 
   // Store last known mortgage inputs
   const [lastInputs, setLastInputs] = useState<MortgageInputs | null>(null)
 
-  const sendMessage = async (userInput?: string, extra?: MortgageInputs) => {
-    const messageToSend = userInput ?? input
-    if (!messageToSend.trim()) return
-
-    const messageObj: ChatMessage = extra
-      ? { role: 'user', content: messageToSend, originalInputs: extra }
-      : { role: 'user', content: messageToSend }
-
-    const newMessages: ChatMessage[] = [...messages, messageObj]
+  const submitMessages = async (newMessages: ChatMessage[]) => {
+    if (requestInFlight.current) return
+    requestInFlight.current = true
 
     setMessages(newMessages)
-    setInput('')
     setLoading(true)
+    setError(null)
+    setFailedMessages(null)
     setCtaPrompt(null) // clear previous CTA
 
     try {
@@ -85,7 +83,24 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         body: JSON.stringify({ messages: newMessages }),
       })
 
-      const data = await res.json()
+      let data
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('The server returned an unreadable response. Please try again.')
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          typeof data?.error === 'string'
+            ? data.error
+            : 'Your message could not be processed. Please try again.'
+        )
+      }
+
+      if (!data || (!data.message && !data.mortgageResults && !data.comparison && !data.ctaPrompt)) {
+        throw new Error('The server returned an empty response. Please try again.')
+      }
 
       if (data.message) {
         setMessages([
@@ -106,14 +121,29 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         setCtaPrompt(data.ctaPrompt)
       }
     } catch (error) {
-      console.error('Error calling chatbot:', error)
-      setMessages([
-        ...newMessages,
-        { role: 'assistant', content: 'Sorry, there was an error.' },
-      ])
+      setError(
+        error instanceof Error && !(error instanceof TypeError)
+          ? error.message
+          : 'Unable to reach the mortgage assistant. Check your connection and try again.'
+      )
+      setFailedMessages(newMessages)
     } finally {
+      requestInFlight.current = false
       setLoading(false)
     }
+  }
+
+  const sendMessage = async (userInput?: string, extra?: MortgageInputs) => {
+    if (requestInFlight.current) return
+    const messageToSend = userInput ?? input
+    if (!messageToSend.trim()) return
+
+    const messageObj: ChatMessage = extra
+      ? { role: 'user', content: messageToSend, originalInputs: extra }
+      : { role: 'user', content: messageToSend }
+
+    setInput('')
+    await submitMessages([...messages, messageObj])
   }
 
   const handleCtaSelection = (value: string) => {
@@ -131,7 +161,13 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
     <div className="mt-8 p-4 border rounded bg-white text-gray-900">
       <h3 className="font-bold mb-2">Mortgage Chatbot</h3>
 
-      <div className="h-96 overflow-y-auto border p-2 mb-2 bg-gray-50">
+      <div
+        role="log"
+        aria-label="Mortgage conversation"
+        aria-live="polite"
+        aria-busy={loading}
+        className="h-96 overflow-y-auto border p-2 mb-2 bg-gray-50"
+      >
         {messages
           .filter((msg) => !msg.content.startsWith('CTA_SELECTION:'))
           .map((msg, idx) => (
@@ -154,7 +190,8 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
               {ctaPrompt.options.map((opt) => (
                 <button
                   key={opt.value}
-                  className="px-3 py-1 bg-blue-600 text-white rounded"
+                  disabled={loading}
+                  className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
                   onClick={() => handleCtaSelection(opt.value)}
                 >
                   {opt.label}
@@ -165,11 +202,29 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         )}
       </div>
 
+      {error && (
+        <div role="alert" className="mb-3 p-3 border border-red-300 bg-red-50 text-red-800 rounded">
+          <p>{error}</p>
+          {failedMessages && (
+            <button
+              type="button"
+              onClick={() => submitMessages(failedMessages)}
+              disabled={loading}
+              className="mt-2 px-3 py-1 border border-red-800 rounded font-semibold disabled:opacity-50"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
+
       <input
+        aria-label="Message"
+        disabled={loading}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Ask about mortgages..."
-        className="w-full p-2 border rounded mb-2 bg-white"
+        className="w-full p-2 border rounded mb-2 bg-white disabled:opacity-50"
         onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
       />
 

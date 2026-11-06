@@ -10,6 +10,11 @@ const MortgageAssistant = () => {
     useState<ChatbotMortgageResults | null>(null)
   const [comparison, setComparison] = useState<MortgageComparison | null>(null)
 
+  const handleCalculation = (results: ChatbotMortgageResults) => {
+    setChatbotResults(results)
+    setComparison(null)
+  }
+
   return (
     <div className="mx-auto bg-[#e8e8e8] min-h-screen pb-24">
       <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-center mb-12 pt-8 text-[#00c99a] bg-[#0d003d] pb-8">
@@ -28,7 +33,7 @@ const MortgageAssistant = () => {
               property price, deposit, interest rate, and term.
             </p>
             <Chatbot
-              setChatbotResults={setChatbotResults}
+              setChatbotResults={handleCalculation}
               setComparison={setComparison}
             />
           </div>
