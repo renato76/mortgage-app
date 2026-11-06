@@ -1,10 +1,16 @@
 import MortgageResults from '@/components/MortgageResults/MortgageResults'
-import { calculateMortgageDetails } from '@/utils/calculateMortgageDetails'
+import {
+  calculateMortgageDetails,
+  MortgageValidationError,
+} from '@/utils/calculateMortgageDetails'
 import { GetServerSideProps } from 'next'
 import { RadioGroup } from '@headlessui/react'
 import { useState } from 'react'
 
 interface MortgageProps {
+  error?: string
+  fundingType?: 'mortgage' | 'cash'
+  purchasePrice?: number
   monthlyPayment?: number
   totalCost?: number
   capitalPaid?: number
@@ -17,6 +23,7 @@ interface MortgageProps {
 }
 
 const MortgageCalculator = ({
+  error,
   monthlyPayment,
   totalCost,
   capitalPaid,
@@ -44,6 +51,11 @@ const MortgageCalculator = ({
       <div className="px-4 max-w-md sm:max-w-lg mx-auto md:max-w-3xl lg:max-w-4xl">
         <div className="flex flex-col md:flex-row w-full  bg-[#f1f1f1] pt-12 rounded-[20px]">
           <div className="w-full md:w-1/2 md:mr-6 pb-48 px-4">
+            {error && (
+              <p role="alert" className="mb-4 p-3 border border-red-300 bg-red-50 text-red-800 rounded">
+                {error}
+              </p>
+            )}
             <form
               action="/mortgage-calculator"
               method="get"
@@ -238,37 +250,36 @@ const MortgageCalculator = ({
   )
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ query }) => {
-  const { price, deposit, interestRate, termYears } = query
+export const getServerSideProps: GetServerSideProps<MortgageProps> = async ({ query }) => {
+  const fields = ['price', 'deposit', 'interestRate', 'termYears'] as const
 
-  if (
-    !price ||
-    !deposit ||
-    !interestRate ||
-    !termYears ||
-    isNaN(Number(price)) ||
-    isNaN(Number(deposit)) ||
-    isNaN(Number(interestRate)) ||
-    isNaN(Number(termYears))
-  ) {
+  if (fields.every((field) => query[field] === undefined)) {
     return { props: {} }
   }
 
-  const results = calculateMortgageDetails(
-    Number(price),
-    Number(deposit),
-    Number(interestRate),
-    Number(termYears)
-  )
+  const inputs = {
+    price: typeof query.price === 'string' ? query.price : '',
+    deposit: typeof query.deposit === 'string' ? query.deposit : '',
+    interestRate: typeof query.interestRate === 'string' ? query.interestRate : '',
+    termYears: typeof query.termYears === 'string' ? query.termYears : '',
+  }
 
-  return {
-    props: {
-      ...results,
-      price: price || '',
-      deposit: deposit || '',
-      interestRate: interestRate || '',
-      termYears: termYears || '',
-    },
+  try {
+    if (fields.some((field) => Array.isArray(query[field]))) {
+      throw new MortgageValidationError('Enter one value for each mortgage input.')
+    }
+
+    const results = calculateMortgageDetails(
+      inputs.price.trim() === '' ? NaN : Number(inputs.price),
+      inputs.deposit.trim() === '' ? NaN : Number(inputs.deposit),
+      inputs.interestRate.trim() === '' ? undefined : Number(inputs.interestRate),
+      inputs.termYears.trim() === '' ? undefined : Number(inputs.termYears)
+    )
+
+    return { props: { ...inputs, ...results } }
+  } catch (error) {
+    if (!(error instanceof MortgageValidationError)) throw error
+    return { props: { ...inputs, error: error.message } }
   }
 }
 

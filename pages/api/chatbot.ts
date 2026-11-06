@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { OpenAI } from 'openai'
-import { calculateMortgageDetails } from '../../utils/calculateMortgageDetails'
+import {
+  calculateMortgageDetails,
+  MortgageValidationError,
+} from '../../utils/calculateMortgageDetails'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -18,22 +21,26 @@ const tools = [
     function: {
       name: 'calculateMortgagePayment',
       description:
-        'Calculate UK mortgage payments when user provides property price, deposit, interest rate and term',
+        'Calculate UK mortgage payments using property price, deposit, interest rate and term. For a fully cash-funded purchase, only property price and deposit are needed.',
       parameters: {
         type: 'object',
         properties: {
-          price: { type: 'number', description: 'Property price in £' },
-          deposit: { type: 'number', description: 'Deposit amount in £' },
+          price: { type: 'number', exclusiveMinimum: 0, description: 'Property price in £' },
+          deposit: { type: 'number', minimum: 0, description: 'Deposit amount in £, no greater than the property price' },
           interestRate: {
             type: 'number',
+            minimum: 0,
+            maximum: 100,
             description: 'Annual interest rate percentage (e.g. 5.5)',
           },
           termYears: {
-            type: 'number',
+            type: 'integer',
+            minimum: 1,
+            maximum: 40,
             description: 'Mortgage term in years (e.g. 25)',
           },
         },
-        required: ['price', 'deposit', 'interestRate', 'termYears'],
+        required: ['price', 'deposit'],
       },
     },
   },
@@ -47,7 +54,23 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { messages } = req.body
+  const messages = req.body?.messages
+
+  if (
+    !Array.isArray(messages) ||
+    messages.length === 0 ||
+    messages.some((message) =>
+      !message ||
+      typeof message !== 'object' ||
+      !['user', 'assistant'].includes(message.role) ||
+      typeof message.content !== 'string' ||
+      message.content.trim() === ''
+    )
+  ) {
+    return res.status(400).json({
+      error: 'Provide a non-empty conversation containing user or assistant messages.',
+    })
+  }
 
   try {
     // HANDLE CTA SELECTIONS FIRST (before calling OpenAI)
@@ -76,7 +99,10 @@ export default async function handler(
       }
 
       if (type === 'deposit_amount_selection') {
-        const increaseAmount = parseInt(value)
+        if (!['10000', '15000', '20000'].includes(value)) {
+          throw new MortgageValidationError('Choose a valid deposit increase.')
+        }
+        const increaseAmount = Number(value)
 
         interface Message {
           role: string
@@ -89,7 +115,8 @@ export default async function handler(
           }
         }
 
-        const originalInputs = (messages as Message[])
+        const originalInputs = ([...messages] as Message[])
+          .reverse()
           .map((m) => m.originalInputs)
           .find(Boolean)
 
@@ -157,9 +184,12 @@ export default async function handler(
         {
           role: 'system',
           content:
-            'You are a helpful UK mortgage assistant. Ask conversationally for missing information. Once you have property price (£), deposit (£), interest rate (%), and term (years), call calculateMortgagePayment. Use UK terminology and £.',
+            'You are a helpful UK mortgage assistant. Ask conversationally for missing information; never guess values. For a mortgage, collect property price (£), deposit (£), interest rate (0-100%), and term (1-40 whole years) before calling calculateMortgagePayment. If the deposit equals the price, call the tool with just price and deposit for a cash purchase. Deposits must be between zero and the price. Use UK terminology and £.',
         },
-        ...messages,
+        ...messages.map((message) => ({
+          role: message.role as 'user' | 'assistant',
+          content: message.content as string,
+        })),
       ],
       tools,
       tool_choice: 'auto',
@@ -177,7 +207,16 @@ export default async function handler(
         toolCall.type === 'function' &&
         toolCall.function.name === 'calculateMortgagePayment'
       ) {
-        const args = JSON.parse(toolCall.function.arguments)
+        let args
+        try {
+          args = JSON.parse(toolCall.function.arguments)
+        } catch {
+          throw new MortgageValidationError('The mortgage inputs could not be read. Please confirm your figures.')
+        }
+
+        if (!args || typeof args !== 'object' || Array.isArray(args)) {
+          throw new MortgageValidationError('Provide valid mortgage inputs.')
+        }
 
         /**
          * Base mortgage calculation (deterministic)
@@ -188,6 +227,14 @@ export default async function handler(
           args.interestRate,
           args.termYears
         )
+
+        if (baseResults.fundingType === 'cash') {
+          return res.status(200).json({
+            state: 'complete',
+            message: 'Your deposit covers the property price. This is a cash purchase with no mortgage borrowing. Taxes, fees and other purchase costs are not included.',
+            mortgageResults: baseResults,
+          })
+        }
 
         /**
          * ✅ RETURN BASE RESULTS + CTA (NO SCENARIO YET)
@@ -226,6 +273,10 @@ export default async function handler(
       message: assistantMessage.content,
     })
   } catch (error: unknown) {
+    if (error instanceof MortgageValidationError) {
+      return res.status(400).json({ error: error.message })
+    }
+
     console.error('Chatbot error:', error)
 
     const errorWithCode = error as {
