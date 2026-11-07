@@ -1,0 +1,130 @@
+@font-face {
+  font-family: 'Assistant Geist';
+  src: url('../pages/fonts/GeistVF.woff') format('woff');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+.page {
+  --ink: #0d003d;
+  --muted: #646477;
+  --accent: #00c99a;
+  --accent-ink: #006b54;
+  --accent-soft: #e5faf3;
+  --line: #dfe2e9;
+  color-scheme: light;
+  min-height: 100vh;
+  color: var(--ink);
+  background: #f6f7f9;
+  background-image: linear-gradient(90deg, transparent calc(100% - 1px), #eceef3 1px);
+  background-size: 112px 100%;
+  font-family: 'Assistant Geist', 'Helvetica Neue', sans-serif;
+  letter-spacing: 0;
+}
+
+.page * { box-sizing: border-box; letter-spacing: 0; }
+.page button, .page input { font: inherit; }
+.page button, .page a { -webkit-tap-highlight-color: transparent; }
+.page button { cursor: pointer; }
+.page button:disabled { cursor: not-allowed; opacity: .5; }
+.page :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 4px; }
+.skipLink { position: absolute; top: -80px; left: 16px; background: white; padding: 12px; z-index: 20; }
+.skipLink:focus { top: 8px; }
+.header { background: var(--ink); border-bottom: 1px solid var(--ink); }
+.headerInner { max-width: 1240px; margin: auto; padding: 0 36px; min-height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.wordmark { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 650; color: var(--accent); }
+.brandMark { width: 9px; height: 25px; border-radius: 2px; background: var(--accent); display: inline-block; transform: skewY(-15deg); }
+.calculatorLink { font-size: 12px; color: #e8e5f1; display: inline-flex; gap: 12px; align-items: center; text-decoration: none; }
+.calculatorLink:hover { color: var(--accent); }
+.header :focus-visible { outline-color: var(--accent); }
+.main { max-width: 1240px; margin: auto; padding: 38px 36px 0; }
+.pageHeading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+.eyebrow { font-size: 10px; font-weight: 650; line-height: 1.6; color: var(--muted); }
+.pageHeading h1 { font-size: 30px; font-weight: 550; line-height: 1.3; margin-top: 9px; }
+.estimateBadge { font-size: 11px; color: var(--accent-ink); padding: 7px 10px; background: var(--accent-soft); border-radius: 4px; white-space: nowrap; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; gap: 38px; }
+.conversationSection { min-width: 0; }
+.results { min-width: 0; padding: 23px 0 24px; border-top: 1px solid var(--line); }
+.resultsHeader { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 25px; }
+.resultState { font-size: 10px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.resultState::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink); }
+.results h2 { font-size: 23px; font-weight: 500; line-height: 1.35; margin: 0 0 22px; }
+.paymentSummary { padding: 4px 0 20px; border: 0; border-bottom: 1px solid var(--line); background: transparent; margin-bottom: 20px; }
+.paymentSummary > p:first-child, .emptyPayment > p { font-size: 12px; color: var(--muted); }
+.paymentSummary > strong { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 36px; font-weight: 550; color: var(--ink); line-height: 1.4; margin-top: 5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.paymentSummary strong > span { font-size: 11px; color: var(--muted); font-weight: 400; }
+.paymentSummary > p:last-child { font-size: 11px; color: var(--accent-ink); line-height: 1.7; margin-top: 6px; }
+.breakdown { margin: 0; }
+.breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.breakdown dt { color: var(--muted); }
+.breakdown dd { font-weight: 550; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.chart { margin-top: 25px; }
+.chart figcaption { font-size: 11px; font-weight: 550; margin-bottom: 12px; }
+.chart svg { display: block; width: 100%; aspect-ratio: 320 / 132; }
+.chartAxis { display: flex; justify-content: space-between; color: var(--muted); font-size: 9px; }
+.assumptions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.assumptions dt { color: var(--muted); font-size: 10px; margin-bottom: 3px; }
+.assumptions dd { font-size: 12px; font-weight: 550; }
+.disclaimer { color: var(--muted); font-size: 10px; line-height: 1.85; margin-top: 20px; }
+.emptyResults { padding: 2px 0 10px; }
+.emptyResults h2 { font-size: 28px; line-height: 1.4; margin-bottom: 28px; }
+.emptyPayment { padding: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 5px; }
+.emptyPayment strong { display: flex; align-items: baseline; gap: 9px; font-size: 40px; font-weight: 400; color: var(--muted); margin-top: 5px; }
+.emptyPayment strong span { font-size: 11px; font-weight: 400; }
+.emptyRule { width: 46px; height: 3px; background: var(--accent); margin-top: 28px; }
+.comparisonTitle { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 22px; }
+.comparisonTitle h2 { margin: 0; }
+.textButton { display: inline-flex; align-items: center; gap: 7px; color: var(--accent-ink); background: transparent; border: 0; padding: 4px 0; font-size: 11px; font-weight: 550; }
+.textButton:hover { text-decoration: underline; text-underline-offset: 3px; }
+.propertyPrice { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--muted); margin: 0 0 18px; }
+.propertyPrice strong { color: var(--ink); font-weight: 550; }
+.tableWrap { overflow-x: auto; }
+.comparisonTable { width: 100%; border-collapse: collapse; font-size: 11px; }
+.comparisonTable th, .comparisonTable td { border-bottom: 1px solid var(--line); text-align: right; padding: 12px 8px; font-variant-numeric: tabular-nums; }
+.comparisonTable thead th { color: var(--muted); font-weight: 500; font-size: 10px; }
+.comparisonTable th:first-child { text-align: left; padding-left: 0; font-weight: 500; }
+.comparisonTable td { white-space: nowrap; font-weight: 550; }
+.comparisonTable td:last-child, .comparisonTable thead th:last-child { background: var(--accent-soft); color: var(--ink); }
+.chatbot { padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); }
+.chatbotTitle { font-size: 16px; font-weight: 650; margin-bottom: 14px; }
+.chatLog { height: 390px; overflow-y: auto; overscroll-behavior: contain; background: #f8f9fb; border: 1px solid var(--line); padding: 14px; margin-bottom: 12px; }
+.message { font-size: 14px; line-height: 1.85; margin-bottom: 10px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.message strong { color: var(--accent-ink); font-weight: 650; }
+.userMessage { color: var(--ink); }
+.userMessage strong { color: var(--ink); }
+.chatChoices { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
+.chatChoices > p { font-size: 13px; font-weight: 550; line-height: 1.7; margin-bottom: 10px; }
+.chatChoiceOptions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 9px 16px; min-height: 40px; background: var(--accent); color: var(--ink); font-size: 13px; font-weight: 600; }
+.actionButton:hover:not(:disabled) { background: #00b98d; border-color: #00b98d; }
+.messageInput { display: block; width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; background: white; color: var(--ink); font-size: 14px; }
+.messageInput::placeholder { color: #6f7080; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid var(--line); padding: 22px 0; margin-top: 40px; }
+.footer > span { font-size: 11px; font-weight: 600; }
+.footer p { font-size: 10px; color: var(--muted); line-height: 1.7; }
+@media (max-width: 1000px) {
+  .workspace { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 26px; }
+  .paymentSummary > strong { font-size: 30px; }
+}
+@media (max-width: 760px) {
+  .headerInner { min-height: 68px; padding: 0 20px; }
+  .wordmark { font-size: 16px; gap: 8px; }
+  .calculatorLink { font-size: 10px; gap: 5px; }
+  .main { padding: 28px 20px 0; }
+  .pageHeading { margin-bottom: 24px; }
+  .pageHeading h1 { font-size: 25px; }
+  .estimateBadge { display: none; }
+  .workspace { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .chatbot { padding: 14px; }
+  .chatLog { height: 340px; }
+  .messageInput { font-size: 16px; }
+  .results { padding-top: 23px; }
+  .emptyResults h2 br { display: none; }
+  .paymentSummary > strong { font-size: 36px; }
+  .assumptions { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .assumptions dd { font-size: 10px; overflow-wrap: anywhere; }
+  .comparisonTable { min-width: 310px; }
+  .footer { margin-top: 18px; flex-direction: column; align-items: flex-start; gap: 8px; }
+}

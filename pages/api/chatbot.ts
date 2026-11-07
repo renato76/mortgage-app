@@ -11,36 +11,39 @@ const openai = new OpenAI({
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
 
-/**
- * OpenAI function definition
- * Used ONLY to detect when base mortgage info is complete
- */
 const tools = [
   {
     type: 'function' as const,
     function: {
-      name: 'calculateMortgagePayment',
+      name: 'extractMortgageInputs',
       description:
-        'Calculate UK mortgage payments using property price, deposit, interest rate and term. For a fully cash-funded purchase, only property price and deposit are needed.',
+        'Extract the latest user-provided mortgage inputs from the conversation. Return null only for missing or ambiguous values. Do not ask for confirmation or perform calculations.',
+      strict: true,
       parameters: {
         type: 'object',
         properties: {
-          price: { type: 'number', exclusiveMinimum: 0, description: 'Property price in £' },
-          deposit: { type: 'number', minimum: 0, description: 'Deposit amount in £, no greater than the property price' },
+          price: { type: ['number', 'null'], description: 'Property price in pounds. 430k or 430K means 430000.' },
+          deposit: { type: ['number', 'null'], description: 'Deposit amount in pounds. 100k or 100K means 100000.' },
           interestRate: {
-            type: 'number',
-            minimum: 0,
-            maximum: 100,
-            description: 'Annual interest rate percentage (e.g. 5.5)',
+            type: ['number', 'null'],
+            description: 'Annual interest rate as a percentage. A rate of 3.74% means 3.74, not 0.0374.',
           },
           termYears: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 40,
-            description: 'Mortgage term in years (e.g. 25)',
+            type: ['number', 'null'],
+            description: 'Mortgage term in years. 23 years means 23.',
+          },
+          intent: {
+            type: 'string',
+            enum: ['calculate', 'question'],
+            description: 'calculate for supplied or corrected figures, calculation requests, or replies to input questions; question only for general educational questions.',
+          },
+          answer: {
+            type: ['string', 'null'],
+            description: 'An answer for a general mortgage question; null for calculation requests. Never ask for calculation inputs here.',
           },
         },
-        required: ['price', 'deposit'],
+        required: ['price', 'deposit', 'interestRate', 'termYears', 'intent', 'answer'],
+        additionalProperties: false,
       },
     },
   },
@@ -146,9 +149,24 @@ export default async function handler(
           termYears
         )
 
+        const delta = {
+          monthlyPayment: updatedResults.monthlyPayment - originalResults.monthlyPayment,
+          totalInterest: updatedResults.interestPaid - originalResults.interestPaid,
+          totalCost: updatedResults.totalCost - originalResults.totalCost,
+        }
+        const pounds = new Intl.NumberFormat('en-GB', {
+          style: 'currency', currency: 'GBP', maximumFractionDigits: 0,
+        })
+        const interestExplanation = interestRate === 0
+          ? 'At 0% interest, there is no mortgage interest to save.'
+          : `Over the ${termYears}-year term, you would also save approximately ${pounds.format(-delta.totalInterest)} in interest, assuming the rate stays at ${interestRate}%.`
+        const cashExplanation = updatedResults.fundingType === 'cash'
+          ? ' Your increased deposit covers the full property price, so you would no longer need a mortgage.'
+          : ''
+
         return res.status(200).json({
           state: 'complete',
-          message: `Here's how increasing your deposit by £${increaseAmount.toLocaleString()} affects your mortgage.`,
+          message: `You would borrow ${pounds.format(increaseAmount)} less, reducing your monthly repayments by approximately ${pounds.format(-delta.monthlyPayment)}. ${interestExplanation} You would need ${pounds.format(increaseAmount)} more cash upfront.${cashExplanation}`,
           comparison: {
             originalPrice: originalInputs.price,
             original: {
@@ -159,13 +177,7 @@ export default async function handler(
               label: `Deposit + £${increaseAmount.toLocaleString()}`,
               results: updatedResults,
             },
-            delta: {
-              monthlyPayment:
-                updatedResults.monthlyPayment - originalResults.monthlyPayment,
-              totalInterest:
-                updatedResults.interestPaid - originalResults.interestPaid,
-              totalCost: updatedResults.totalCost - originalResults.totalCost,
-            },
+            delta,
           },
         })
       }
@@ -173,18 +185,13 @@ export default async function handler(
       console.log('💬 Normal conversation flow - proceeding to OpenAI')
     }
 
-    /**
-     * NORMAL FLOW: Ask OpenAI what to do next
-     * - ask for missing info
-     * - OR call calculateMortgagePayment
-     */
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
         {
           role: 'system',
           content:
-            'You are a helpful UK mortgage assistant. Ask conversationally for missing information; never guess values. For a mortgage, collect property price (£), deposit (£), interest rate (0-100%), and term (1-40 whole years) before calling calculateMortgagePayment. If the deposit equals the price, call the tool with just price and deposit for a cash purchase. Deposits must be between zero and the price. Use UK terminology and £.',
+            'You are a UK mortgage input extractor and assistant. Always call extractMortgageInputs. Extract values supplied by the user across the conversation, keeping earlier supplied values unless the user corrects or clears them. Never treat assistant examples or suggestions as confirmed user inputs. Use intent calculate whenever the user supplies or corrects figures, asks to calculate, or answers an input question. Use intent question only for general educational questions. Expand k/K as thousands and m/M as millions for prices and deposits. Annual rates are percentages: rate 3.74% means interestRate 3.74, and rate 0% means interestRate 0. Example: "calculate figures, price is 430K, deposit is 100K, term 23 years, rate 3.74%" extracts price 430000, deposit 100000, termYears 23, interestRate 3.74, intent calculate, answer null. Example: "property price 430k, deposit 95k, term 23 years, rate 3.65%" extracts price 430000, deposit 95000, termYears 23, interestRate 3.65. Never omit an explicitly supplied percentage or ask the user to confirm obvious numerical relationships. Do not calculate, invent inputs, or ask follow-up questions: the server validates values, determines missing fields, and calculates. Return null for genuinely missing, cleared or ambiguous values. Answer general questions concisely using UK terminology and pounds; do not claim lender approval or invent current rates.',
         },
         ...messages.map((message) => ({
           role: message.role as 'user' | 'assistant',
@@ -192,20 +199,18 @@ export default async function handler(
         })),
       ],
       tools,
-      tool_choice: 'auto',
+      tool_choice: { type: 'function', function: { name: 'extractMortgageInputs' } },
+      parallel_tool_calls: false,
     })
 
-    const assistantMessage = completion.choices[0].message
+    const assistantMessage = completion.choices[0]?.message
 
-    /**
-     * CASE 1: OpenAI decides base mortgage info is complete
-     */
-    if (assistantMessage.tool_calls?.length) {
+    if (assistantMessage?.tool_calls?.length) {
       const toolCall = assistantMessage.tool_calls[0]
 
       if (
         toolCall.type === 'function' &&
-        toolCall.function.name === 'calculateMortgagePayment'
+        toolCall.function.name === 'extractMortgageInputs'
       ) {
         let args
         try {
@@ -218,14 +223,45 @@ export default async function handler(
           throw new MortgageValidationError('Provide valid mortgage inputs.')
         }
 
+        const fields = ['price', 'deposit', 'interestRate', 'termYears'] as const
+        for (const field of fields) {
+          if (args[field] !== null && (typeof args[field] !== 'number' || !Number.isFinite(args[field]))) {
+            throw new MortgageValidationError('Provide valid numerical mortgage inputs.')
+          }
+        }
+
+        if (!['calculate', 'question'].includes(args.intent)) {
+          throw new MortgageValidationError('The mortgage request could not be understood. Please try again.')
+        }
+
+        if (args.intent === 'question') {
+          if (typeof args.answer !== 'string' || !args.answer.trim()) {
+            return res.status(502).json({ error: 'The assistant could not answer your question. Please try again.' })
+          }
+          return res.status(200).json({ state: 'collecting', message: args.answer })
+        }
+
+        const missing = fields.filter((field) => args[field] === null &&
+          !(args.price !== null && args.price === args.deposit &&
+            (field === 'interestRate' || field === 'termYears')))
+        if (missing.length) {
+          const questions = {
+            price: 'What is the property price (£)?',
+            deposit: 'How much is your deposit (£)?',
+            interestRate: 'What annual interest rate (%) should I use?',
+            termYears: 'What mortgage term should I use, in whole years?',
+          }
+          return res.status(200).json({ state: 'collecting', message: questions[missing[0]] })
+        }
+
         /**
          * Base mortgage calculation (deterministic)
          */
         const baseResults = calculateMortgageDetails(
           args.price,
           args.deposit,
-          args.interestRate,
-          args.termYears
+          args.interestRate ?? undefined,
+          args.termYears ?? undefined
         )
 
         if (baseResults.fundingType === 'cash') {
@@ -265,12 +301,8 @@ export default async function handler(
       }
     }
 
-    /**
-     * CASE 2: OpenAI is still collecting base inputs
-     */
-    return res.status(200).json({
-      state: 'collecting',
-      message: assistantMessage.content,
+    return res.status(502).json({
+      error: 'The assistant could not extract your mortgage inputs. Please try again.',
     })
   } catch (error: unknown) {
     if (error instanceof MortgageValidationError) {

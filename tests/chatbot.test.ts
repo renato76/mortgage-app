@@ -27,10 +27,13 @@ async function request(body: unknown, method = 'POST') {
 }
 
 function toolResponse(argumentsValue: unknown) {
+  const extracted = argumentsValue && typeof argumentsValue === 'object' && !Array.isArray(argumentsValue)
+    ? { price: null, deposit: null, interestRate: null, termYears: null, intent: 'calculate', answer: null, ...argumentsValue }
+    : argumentsValue
   return {
     choices: [{ message: {
       tool_calls: [{ type: 'function', function: {
-        name: 'calculateMortgagePayment', arguments: JSON.stringify(argumentsValue),
+        name: 'extractMortgageInputs', arguments: JSON.stringify(extracted),
       } }],
     } }],
   }
@@ -64,10 +67,10 @@ test.each([
   expect(createCompletion).not.toHaveBeenCalled()
 })
 
-test('returns a follow-up when the model needs more details', async () => {
-  createCompletion.mockResolvedValue({ choices: [{ message: { content: 'What is your deposit?' } }] })
+test('asks only for a genuinely missing deposit', async () => {
+  createCompletion.mockResolvedValue(toolResponse({ ...inputs, deposit: null }))
   expect(await request({ messages: [{ role: 'user', content: 'Help me calculate a mortgage' }] }))
-    .toEqual({ status: 200, body: { state: 'collecting', message: 'What is your deposit?' } })
+    .toEqual({ status: 200, body: { state: 'collecting', message: 'How much is your deposit (£)?' } })
 })
 
 test.each([0, 5])('executes model tools with the real engine at %f%%', async (rate) => {
@@ -133,6 +136,45 @@ test('deposit comparison uses the real engine without calling OpenAI', async () 
   expect(createCompletion).not.toHaveBeenCalled()
 })
 
+test('explains deposit savings conversationally using the comparison figures', async () => {
+  const response = await request({ messages: [{
+    role: 'user', content: 'CTA_SELECTION:deposit_amount_selection:15000',
+    originalInputs: { price: 430000, deposit: 100000, interestRate: 3.74, termYears: 23 },
+  }] })
+
+  expect(response.status).toBe(200)
+  expect(response.body?.message).toBe(
+    'You would borrow £15,000 less, reducing your monthly repayments by approximately £81. Over the 23-year term, you would also save approximately £7,387 in interest, assuming the rate stays at 3.74%. You would need £15,000 more cash upfront.'
+  )
+  expect(createCompletion).not.toHaveBeenCalled()
+})
+
+test('does not imply interest savings for a zero-interest mortgage', async () => {
+  const response = await request({ messages: [{
+    role: 'user', content: 'CTA_SELECTION:deposit_amount_selection:15000',
+    originalInputs: { ...inputs, interestRate: 0 },
+  }] })
+
+  expect(response.status).toBe(200)
+  expect(response.body?.message).toContain('At 0% interest, there is no mortgage interest to save.')
+  expect(response.body?.message).not.toContain('save approximately')
+  expect(createCompletion).not.toHaveBeenCalled()
+})
+
+test('explains when a larger deposit makes the purchase fully cash-funded', async () => {
+  const response = await request({ messages: [{
+    role: 'user', content: 'CTA_SELECTION:deposit_amount_selection:15000',
+    originalInputs: { ...inputs, deposit: 285000 },
+  }] })
+
+  expect(response.status).toBe(200)
+  expect(response.body?.message).toContain('you would no longer need a mortgage')
+  expect(response.body).toMatchObject({ comparison: {
+    scenario: { results: { fundingType: 'cash', monthlyPayment: 0 } },
+  } })
+  expect(createCompletion).not.toHaveBeenCalled()
+})
+
 test.each(['0', '-10000', '10000junk', 'NaN'])('rejects invalid deposit increase %s', async (value) => {
   const response = await request({ messages: [{
     role: 'user', content: `CTA_SELECTION:deposit_amount_selection:${value}`, originalInputs: inputs,
@@ -168,4 +210,67 @@ test('returns a helpful error for an unavailable model', async () => {
   const response = await request({ messages: [{ role: 'user', content: 'Hello' }] })
   expect(response.status).toBe(400)
   expect(response.body).toEqual({ error: expect.stringContaining('not available') })
+})
+
+test.each([
+  ['calculate figures, property price 430k, deposit 95k, term 23 years, rate 3.65%', 95000, 3.65],
+  ['calculate figures, price is 430K, deposit is 100K, term 23 years, rate 3.74%', 100000, 3.74],
+] as const)('calculates immediately for complete extracted figures: %s', async (content, deposit, rate) => {
+  createCompletion.mockResolvedValue(toolResponse({ price: 430000, deposit, interestRate: rate, termYears: 23 }))
+  const response = await request({ messages: [{ role: 'user', content }] })
+
+  expect(response.status).toBe(200)
+  expect(response.body).toMatchObject({
+    state: 'complete',
+    originalInputs: { price: 430000, deposit, interestRate: rate, termYears: 23 },
+    mortgageResults: calculateMortgageDetails(430000, deposit, rate, 23),
+  })
+  expect(createCompletion).toHaveBeenCalledTimes(1)
+  expect(createCompletion).toHaveBeenCalledWith(expect.objectContaining({
+    tool_choice: { type: 'function', function: { name: 'extractMortgageInputs' } },
+    parallel_tool_calls: false,
+    tools: [expect.objectContaining({ function: expect.objectContaining({
+      strict: true,
+      parameters: expect.objectContaining({ additionalProperties: false }),
+    }) })],
+  }))
+})
+
+test.each([
+  ['price', 'property price'], ['deposit', 'deposit'],
+  ['interestRate', 'interest rate'], ['termYears', 'term'],
+])('asks for missing %s, not for confirmed values', async (field, question) => {
+  createCompletion.mockResolvedValue(toolResponse({ ...inputs, [field]: null }))
+  const response = await request({ messages: [{ role: 'user', content: 'Calculate my figures' }] })
+  expect(response.status).toBe(200)
+  expect(response.body).toEqual({ state: 'collecting', message: expect.stringContaining(question) })
+})
+
+test('retains the conversation for multi-turn extraction and applies a corrected rate', async () => {
+  createCompletion.mockResolvedValue(toolResponse({ ...inputs, interestRate: 3.74 }))
+  const messages = [
+    { role: 'user', content: 'Price 300k, deposit 60k, term 25 years, rate 5%' },
+    { role: 'assistant', content: 'I have calculated your mortgage.' },
+    { role: 'user', content: 'Actually use 3.74%' },
+  ]
+  const response = await request({ messages })
+  expect(response.body).toMatchObject({ state: 'complete', originalInputs: { ...inputs, interestRate: 3.74 } })
+  expect(createCompletion).toHaveBeenCalledWith(expect.objectContaining({
+    messages: [expect.objectContaining({ role: 'system' }), ...messages],
+  }))
+})
+
+test('still answers general mortgage questions', async () => {
+  createCompletion.mockResolvedValue(toolResponse({ intent: 'question', answer: 'A longer term spreads repayments over more years but can increase total interest.' }))
+  const response = await request({ messages: [{ role: 'user', content: 'What are the risks of a longer term?' }] })
+  expect(response).toEqual({ status: 200, body: {
+    state: 'collecting', message: 'A longer term spreads repayments over more years but can increase total interest.',
+  } })
+})
+
+test('returns a retryable error instead of an unstructured redundant confirmation', async () => {
+  createCompletion.mockResolvedValue({ choices: [{ message: { content: 'Please confirm your interest rate.' } }] })
+  const response = await request({ messages: [{ role: 'user', content: 'Price 430K, deposit 100K, term 23 years, rate 3.74%' }] })
+  expect(response.status).toBe(502)
+  expect(response.body).toEqual({ error: expect.stringContaining('extract your mortgage inputs') })
 })

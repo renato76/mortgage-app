@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
+import styles from '@/styles/assistant.module.css'
 
-interface MortgageInputs {
+export interface MortgageInputs {
   price: number
   deposit: number
   interestRate: number
@@ -14,11 +15,13 @@ interface ChatMessage {
 }
 
 export interface ChatbotMortgageResults {
+  fundingType?: 'mortgage' | 'cash'
+  purchasePrice?: number
   monthlyPayment: number
   totalCost: number
   capitalPaid: number
   interestPaid: number
-  remainingBalance?: number
+  remainingBalance?: Array<{ year: number; balance: number }>
 }
 
 export interface MortgageComparison {
@@ -39,7 +42,7 @@ export interface MortgageComparison {
 }
 
 interface ChatbotProps {
-  setChatbotResults: (results: ChatbotMortgageResults) => void
+  setChatbotResults: (results: ChatbotMortgageResults, originalInputs?: MortgageInputs) => void
   setComparison: (comparison: MortgageComparison) => void
 }
 
@@ -109,7 +112,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         ])
       }
       if (data.mortgageResults && data.state === 'complete') {
-        setChatbotResults(data.mortgageResults)
+        setChatbotResults(data.mortgageResults, data.originalInputs)
         setLastInputs(data.originalInputs || null)
       }
 
@@ -158,23 +161,23 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   }
 
   return (
-    <div className="mt-8 p-4 border rounded bg-white text-gray-900">
-      <h3 className="font-bold mb-2">Mortgage Chatbot</h3>
+    <div className={styles.chatbot}>
+      <h3 className={styles.chatbotTitle}>Mortgage Chatbot</h3>
 
       <div
         role="log"
         aria-label="Mortgage conversation"
         aria-live="polite"
         aria-busy={loading}
-        className="h-96 overflow-y-auto border p-2 mb-2 bg-gray-50"
+        className={styles.chatLog}
       >
         {messages
           .filter((msg) => !msg.content.startsWith('CTA_SELECTION:'))
           .map((msg, idx) => (
             <div
               key={idx}
-              className={`mb-1 ${
-                msg.role === 'user' ? 'text-blue-600' : 'text-green-700'
+              className={`${styles.message} ${
+                msg.role === 'user' ? styles.userMessage : ''
               }`}
             >
               <strong>{msg.role === 'user' ? 'You' : 'Bot'}:</strong>{' '}
@@ -184,14 +187,14 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
 
         {/* Render CTA buttons */}
         {ctaPrompt && (
-          <div className="mt-2 p-2 border rounded bg-gray-100">
-            <p className="mb-2 font-semibold">{ctaPrompt.question}</p>
-            <div className="flex gap-2 flex-wrap">
+          <div className={styles.chatChoices}>
+            <p>{ctaPrompt.question}</p>
+            <div className={styles.chatChoiceOptions}>
               {ctaPrompt.options.map((opt) => (
                 <button
                   key={opt.value}
                   disabled={loading}
-                  className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
+                  className={styles.actionButton}
                   onClick={() => handleCtaSelection(opt.value)}
                 >
                   {opt.label}
@@ -224,14 +227,14 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Ask about mortgages..."
-        className="w-full p-2 border rounded mb-2 bg-white disabled:opacity-50"
+        className={styles.messageInput}
         onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
       />
 
       <button
         onClick={() => sendMessage()}
         disabled={loading}
-        className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+        className={styles.actionButton}
       >
         {loading ? 'Sending...' : 'Send'}
       </button>
