@@ -26,6 +26,9 @@ export interface ChatbotMortgageResults {
 
 export interface MortgageComparison {
   originalPrice: number
+  scenarioType: 'deposit' | 'term' | 'price' | 'rate' | 'multiple'
+  originalInputs: MortgageInputs
+  scenarioInputs: MortgageInputs
   original: {
     label: string
     results: ChatbotMortgageResults
@@ -141,8 +144,9 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
     const messageToSend = userInput ?? input
     if (!messageToSend.trim()) return
 
-    const messageObj: ChatMessage = extra
-      ? { role: 'user', content: messageToSend, originalInputs: extra }
+    const currentInputs = extra || lastInputs
+    const messageObj: ChatMessage = currentInputs
+      ? { role: 'user', content: messageToSend, originalInputs: currentInputs }
       : { role: 'user', content: messageToSend }
 
     setInput('')

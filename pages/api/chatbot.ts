@@ -10,6 +10,16 @@ const openai = new OpenAI({
 })
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+const compactPounds = (value: number) => new Intl.NumberFormat('en-GB', {
+  style: 'currency', currency: 'GBP', notation: 'compact', minimumFractionDigits: 0, maximumFractionDigits: 1,
+}).format(value)
+
+const mortgageProperties = {
+  price: { type: 'number', description: 'Property price in pounds.' },
+  deposit: { type: 'number', description: 'Deposit amount in pounds.' },
+  interestRate: { type: 'number', description: 'Annual interest rate as a percentage.' },
+  termYears: { type: 'number', description: 'Mortgage term in whole years.' },
+}
 
 const tools = [
   {
@@ -47,7 +57,130 @@ const tools = [
       },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'calculateMortgage',
+      description: 'Calculate deterministic mortgage repayment figures from complete mortgage inputs.',
+      strict: true,
+      parameters: {
+        type: 'object',
+        properties: mortgageProperties,
+        required: ['price', 'deposit', 'interestRate', 'termYears'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'compareMortgageScenarios',
+      description: 'Compare a baseline mortgage with a scenario. Provide the new absolute value for every input the user wants changed; use null for unchanged inputs. A scenario may change more than one input.',
+      strict: true,
+      parameters: {
+        type: 'object',
+        properties: {
+          ...mortgageProperties,
+          scenarioPrice: { type: ['number', 'null'], description: 'New offer price in pounds, or null to keep it unchanged.' },
+          scenarioDeposit: { type: ['number', 'null'], description: 'New deposit in pounds, or null to keep it unchanged.' },
+          scenarioTermYears: { type: ['number', 'null'], description: 'New mortgage term in whole years, or null to keep it unchanged.' },
+          scenarioInterestRate: { type: ['number', 'null'], description: 'New annual interest rate as a percentage, or null to keep it unchanged.' },
+        },
+        required: ['price', 'deposit', 'interestRate', 'termYears', 'scenarioPrice', 'scenarioDeposit', 'scenarioTermYears', 'scenarioInterestRate'],
+        additionalProperties: false,
+      },
+    },
+  },
 ]
+
+type MortgageInputs = {
+  price: number
+  deposit: number
+  interestRate: number
+  termYears: number
+}
+
+function parseToolArguments(raw: string, expectedFields: readonly string[]) {
+  let args: unknown
+  try {
+    args = JSON.parse(raw)
+  } catch {
+    throw new MortgageValidationError('The mortgage inputs could not be read. Please try again.')
+  }
+
+  if (!args || typeof args !== 'object' || Array.isArray(args)) {
+    throw new MortgageValidationError('Provide valid mortgage inputs.')
+  }
+
+  const record = args as Record<string, unknown>
+  if (
+    expectedFields.some((field) => !Object.prototype.hasOwnProperty.call(record, field)) ||
+    Object.keys(record).some((field) => !expectedFields.includes(field))
+  ) {
+    throw new MortgageValidationError('Provide valid mortgage inputs.')
+  }
+
+  return record
+}
+
+function readMortgageInputs(args: Record<string, unknown>): MortgageInputs {
+  const fields = ['price', 'deposit', 'interestRate', 'termYears'] as const
+  for (const field of fields) {
+    if (typeof args[field] !== 'number' || !Number.isFinite(args[field])) {
+      throw new MortgageValidationError('Provide valid numerical mortgage inputs.')
+    }
+  }
+
+  return {
+    price: args.price as number,
+    deposit: args.deposit as number,
+    interestRate: args.interestRate as number,
+    termYears: args.termYears as number,
+  }
+}
+
+function compareMortgageScenarios(
+  inputs: MortgageInputs,
+  scenarioInputs: MortgageInputs,
+  scenarioType: 'deposit' | 'term' | 'price' | 'rate' | 'multiple',
+  scenarioLabel: string
+) {
+  const originalResults = calculateMortgageDetails(
+    inputs.price, inputs.deposit, inputs.interestRate, inputs.termYears
+  )
+  const scenarioResults = calculateMortgageDetails(
+    scenarioInputs.price, scenarioInputs.deposit, scenarioInputs.interestRate, scenarioInputs.termYears
+  )
+
+  return {
+    originalPrice: inputs.price,
+    scenarioType,
+    originalInputs: inputs,
+    scenarioInputs,
+    original: { label: 'Current scenario', results: originalResults },
+    scenario: { label: scenarioLabel, results: scenarioResults },
+    delta: {
+      monthlyPayment: scenarioResults.monthlyPayment - originalResults.monthlyPayment,
+      totalInterest: scenarioResults.interestPaid - originalResults.interestPaid,
+      totalCost: scenarioResults.totalCost - originalResults.totalCost,
+    },
+  }
+}
+
+function getStoredMortgageInputs(messages: unknown[]): MortgageInputs | undefined {
+  for (const message of [...messages].reverse()) {
+    if (!message || typeof message !== 'object' || !('originalInputs' in message)) continue
+
+    const storedInputs = (message as { originalInputs?: unknown }).originalInputs
+    if (storedInputs === undefined) continue
+    if (!storedInputs || typeof storedInputs !== 'object' || Array.isArray(storedInputs)) {
+      throw new MortgageValidationError('The current mortgage scenario is invalid. Please calculate it again.')
+    }
+
+    return readMortgageInputs(storedInputs as Record<string, unknown>)
+  }
+  return undefined
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -78,14 +211,11 @@ export default async function handler(
   try {
     // HANDLE CTA SELECTIONS FIRST (before calling OpenAI)
     const lastMessage = messages[messages.length - 1]
-    console.log('🔍 Last message:', lastMessage.content)
 
     if (lastMessage.content.startsWith('CTA_SELECTION:')) {
       const [, type, value] = lastMessage.content.split(':')
-      console.log('🎯 CTA detected - Type:', type, 'Value:', value)
 
       if (type === 'deposit_scenarios' && value === 'show_deposit_options') {
-        console.log('📋 Showing deposit options menu')
         return res.status(200).json({
           state: 'scenario_selection',
           message: 'Choose how much to increase your deposit by:',
@@ -169,6 +299,9 @@ export default async function handler(
           message: `You would borrow ${pounds.format(increaseAmount)} less, reducing your monthly repayments by approximately ${pounds.format(-delta.monthlyPayment)}. ${interestExplanation} You would need ${pounds.format(increaseAmount)} more cash upfront.${cashExplanation}`,
           comparison: {
             originalPrice: originalInputs.price,
+            scenarioType: 'deposit',
+            originalInputs: { price, deposit, interestRate, termYears },
+            scenarioInputs: { price, deposit: newDeposit, interestRate, termYears },
             original: {
               label: 'Current deposit',
               results: originalResults,
@@ -181,9 +314,11 @@ export default async function handler(
           },
         })
       }
-    } else {
-      console.log('💬 Normal conversation flow - proceeding to OpenAI')
     }
+
+    const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user')
+    const hasComparisonIntent = Boolean(latestUserMessage && /\bcompare\b/i.test(latestUserMessage.content))
+    const storedInputs = hasComparisonIntent ? getStoredMortgageInputs(messages) : undefined
 
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
@@ -191,7 +326,7 @@ export default async function handler(
         {
           role: 'system',
           content:
-            'You are a UK mortgage input extractor and assistant. Always call extractMortgageInputs. Extract values supplied by the user across the conversation, keeping earlier supplied values unless the user corrects or clears them. Never treat assistant examples or suggestions as confirmed user inputs. Use intent calculate whenever the user supplies or corrects figures, asks to calculate, or answers an input question. Use intent question only for general educational questions. Expand k/K as thousands and m/M as millions for prices and deposits. Annual rates are percentages: rate 3.74% means interestRate 3.74, and rate 0% means interestRate 0. Example: "calculate figures, price is 430K, deposit is 100K, term 23 years, rate 3.74%" extracts price 430000, deposit 100000, termYears 23, interestRate 3.74, intent calculate, answer null. Example: "property price 430k, deposit 95k, term 23 years, rate 3.65%" extracts price 430000, deposit 95000, termYears 23, interestRate 3.65. Never omit an explicitly supplied percentage or ask the user to confirm obvious numerical relationships. Do not calculate, invent inputs, or ask follow-up questions: the server validates values, determines missing fields, and calculates. Return null for genuinely missing, cleared or ambiguous values. Answer general questions concisely using UK terminology and pounds; do not claim lender approval or invent current rates.',
+            'You are a UK mortgage assistant. Select exactly one tool: use extractMortgageInputs for general questions or when calculation inputs are missing or ambiguous; use calculateMortgage for a requested mortgage estimate when all inputs are known; use compareMortgageScenarios when the user asks to compare scenarios. Carry forward user-provided figures across the conversation, applying corrections and clears. Never treat assistant examples as user inputs. Expand k/K as thousands and m/M as millions for prices and deposits. Rates are annual percentages: 3.74% means 3.74. For comparisons, keep the baseline inputs unchanged and set scenarioPrice, scenarioDeposit, scenarioTermYears, and/or scenarioInterestRate to the requested new absolute values; set all unchanged scenario fields to null. A single scenario may change multiple inputs. Never invent inputs, calculate figures yourself, or claim lender approval or guaranteed rates. For general questions, use concise UK terminology and do not invent current rates.',
         },
         ...messages.map((message) => ({
           role: message.role as 'user' | 'assistant',
@@ -199,122 +334,191 @@ export default async function handler(
         })),
       ],
       tools,
-      tool_choice: { type: 'function', function: { name: 'extractMortgageInputs' } },
+      tool_choice: storedInputs
+        ? { type: 'function', function: { name: 'compareMortgageScenarios' } }
+        : 'auto',
       parallel_tool_calls: false,
     })
 
     const assistantMessage = completion.choices[0]?.message
+    const toolCalls = assistantMessage?.tool_calls
+    if (!toolCalls || toolCalls.length !== 1 || toolCalls[0].type !== 'function') {
+      return res.status(502).json({ error: 'The assistant did not select one supported mortgage action. Please try again.' })
+    }
 
-    if (assistantMessage?.tool_calls?.length) {
-      const toolCall = assistantMessage.tool_calls[0]
+    const toolCall = toolCalls[0]
+    const toolName = toolCall.function.name
+    const toolFields: Record<string, readonly string[]> = {
+      extractMortgageInputs: ['price', 'deposit', 'interestRate', 'termYears', 'intent', 'answer'],
+      calculateMortgage: ['price', 'deposit', 'interestRate', 'termYears'],
+      compareMortgageScenarios: ['price', 'deposit', 'interestRate', 'termYears', 'scenarioPrice', 'scenarioDeposit', 'scenarioTermYears', 'scenarioInterestRate'],
+    }
+    const expectedFields = toolFields[toolName]
+    if (!expectedFields) {
+      return res.status(502).json({ error: 'The assistant selected an unsupported mortgage action. Please try again.' })
+    }
 
-      if (
-        toolCall.type === 'function' &&
-        toolCall.function.name === 'extractMortgageInputs'
-      ) {
-        let args
-        try {
-          args = JSON.parse(toolCall.function.arguments)
-        } catch {
-          throw new MortgageValidationError('The mortgage inputs could not be read. Please confirm your figures.')
+    const args = parseToolArguments(toolCall.function.arguments, expectedFields)
+
+    if (toolName === 'extractMortgageInputs') {
+      const fields = ['price', 'deposit', 'interestRate', 'termYears'] as const
+      for (const field of fields) {
+        if (args[field] !== null && (typeof args[field] !== 'number' || !Number.isFinite(args[field]))) {
+          throw new MortgageValidationError('Provide valid numerical mortgage inputs.')
         }
+      }
 
-        if (!args || typeof args !== 'object' || Array.isArray(args)) {
-          throw new MortgageValidationError('Provide valid mortgage inputs.')
+      if (!['calculate', 'question'].includes(args.intent as string)) {
+        throw new MortgageValidationError('The mortgage request could not be understood. Please try again.')
+      }
+
+      if (args.answer !== null && typeof args.answer !== 'string') {
+        throw new MortgageValidationError('The mortgage request could not be understood. Please try again.')
+      }
+
+      if (args.intent === 'question') {
+        if (typeof args.answer !== 'string' || !args.answer.trim()) {
+          return res.status(502).json({ error: 'The assistant could not answer your question. Please try again.' })
         }
+        return res.status(200).json({ state: 'collecting', message: args.answer })
+      }
 
-        const fields = ['price', 'deposit', 'interestRate', 'termYears'] as const
-        for (const field of fields) {
-          if (args[field] !== null && (typeof args[field] !== 'number' || !Number.isFinite(args[field]))) {
-            throw new MortgageValidationError('Provide valid numerical mortgage inputs.')
-          }
+      if (args.answer !== null) {
+        throw new MortgageValidationError('Provide valid mortgage inputs.')
+      }
+
+      const missing = fields.filter((field) => args[field] === null &&
+        !(args.price !== null && args.price === args.deposit &&
+          (field === 'interestRate' || field === 'termYears')))
+      if (missing.length) {
+        const questions = {
+          price: 'What is the property price (£)?',
+          deposit: 'How much is your deposit (£)?',
+          interestRate: 'What annual interest rate (%) should I use?',
+          termYears: 'What mortgage term should I use, in whole years?',
         }
+        return res.status(200).json({ state: 'collecting', message: questions[missing[0]] })
+      }
 
-        if (!['calculate', 'question'].includes(args.intent)) {
-          throw new MortgageValidationError('The mortgage request could not be understood. Please try again.')
-        }
-
-        if (args.intent === 'question') {
-          if (typeof args.answer !== 'string' || !args.answer.trim()) {
-            return res.status(502).json({ error: 'The assistant could not answer your question. Please try again.' })
-          }
-          return res.status(200).json({ state: 'collecting', message: args.answer })
-        }
-
-        const missing = fields.filter((field) => args[field] === null &&
-          !(args.price !== null && args.price === args.deposit &&
-            (field === 'interestRate' || field === 'termYears')))
-        if (missing.length) {
-          const questions = {
-            price: 'What is the property price (£)?',
-            deposit: 'How much is your deposit (£)?',
-            interestRate: 'What annual interest rate (%) should I use?',
-            termYears: 'What mortgage term should I use, in whole years?',
-          }
-          return res.status(200).json({ state: 'collecting', message: questions[missing[0]] })
-        }
-
-        /**
-         * Base mortgage calculation (deterministic)
-         */
-        const baseResults = calculateMortgageDetails(
-          args.price,
-          args.deposit,
-          args.interestRate ?? undefined,
-          args.termYears ?? undefined
-        )
-
-        if (baseResults.fundingType === 'cash') {
-          return res.status(200).json({
-            state: 'complete',
-            message: 'Your deposit covers the property price. This is a cash purchase with no mortgage borrowing. Taxes, fees and other purchase costs are not included.',
-            mortgageResults: baseResults,
-          })
-        }
-
-        /**
-         * ✅ RETURN BASE RESULTS + CTA (NO SCENARIO YET)
-         */
+      if (args.price === args.deposit) {
+        const mortgageResults = calculateMortgageDetails(args.price as number, args.deposit as number)
         return res.status(200).json({
           state: 'complete',
+          message: 'Your deposit covers the property price. This is a cash purchase with no mortgage borrowing. Taxes, fees and other purchase costs are not included.',
+          mortgageResults,
+        })
+      }
 
-          message: "I've calculated your mortgage details.",
-
-          mortgageResults: baseResults,
-
+      const inputs = readMortgageInputs(args)
+      const mortgageResults = calculateMortgageDetails(
+        inputs.price, inputs.deposit, inputs.interestRate, inputs.termYears
+      )
+      return res.status(200).json({
+        state: 'complete',
+        message: "I've calculated your mortgage details.",
+        mortgageResults,
+        originalInputs: inputs,
+        ...(mortgageResults.fundingType === 'mortgage' && {
           ctaPrompt: {
-            question:
-              'Would you like to see how increasing your deposit affects your monthly payments?',
+            question: 'Would you like to compare a larger deposit?',
             type: 'deposit_scenarios',
             options: [
               { label: 'Yes, show me', value: 'show_deposit_options' },
               { label: "No, I'm good", value: 'decline' },
             ],
           },
-          originalInputs: {
-            price: args.price,
-            deposit: args.deposit,
-            interestRate: args.interestRate,
-            termYears: args.termYears,
-          },
-        })
-      }
+        }),
+      })
     }
 
-    return res.status(502).json({
-      error: 'The assistant could not extract your mortgage inputs. Please try again.',
+    if (toolName === 'calculateMortgage') {
+      const inputs = readMortgageInputs(args)
+      const mortgageResults = calculateMortgageDetails(
+        inputs.price, inputs.deposit, inputs.interestRate, inputs.termYears
+      )
+      return res.status(200).json({
+        state: 'complete',
+        message: mortgageResults.fundingType === 'cash'
+          ? 'Your deposit covers the property price. This is a cash purchase with no mortgage borrowing. Taxes, fees and other purchase costs are not included.'
+          : "I've calculated your mortgage details.",
+        mortgageResults,
+        originalInputs: inputs,
+        ...(mortgageResults.fundingType === 'mortgage' && {
+          ctaPrompt: {
+            question: 'Would you like to compare a larger deposit?',
+            type: 'deposit_scenarios',
+            options: [
+              { label: 'Yes, show me', value: 'show_deposit_options' },
+              { label: "No, I'm good", value: 'decline' },
+            ],
+          },
+        }),
+      })
+    }
+
+    const inputs = storedInputs ?? readMortgageInputs(args)
+    const scenarioInputs = { ...inputs }
+    const changedFields: Array<'deposit' | 'term' | 'price' | 'rate'> = []
+
+    if (args.scenarioDeposit !== null) {
+      if (typeof args.scenarioDeposit !== 'number' || !Number.isFinite(args.scenarioDeposit)) {
+        throw new MortgageValidationError('Provide a valid scenario deposit.')
+      }
+      scenarioInputs.deposit = args.scenarioDeposit
+      if (scenarioInputs.deposit !== inputs.deposit) changedFields.push('deposit')
+    }
+    if (args.scenarioTermYears !== null) {
+      if (typeof args.scenarioTermYears !== 'number' || !Number.isFinite(args.scenarioTermYears)) {
+        throw new MortgageValidationError('Provide a valid scenario term.')
+      }
+      scenarioInputs.termYears = args.scenarioTermYears
+      if (scenarioInputs.termYears !== inputs.termYears) changedFields.push('term')
+    }
+    if (args.scenarioPrice !== null) {
+      if (typeof args.scenarioPrice !== 'number' || !Number.isFinite(args.scenarioPrice)) {
+        throw new MortgageValidationError('Provide a valid scenario offer price.')
+      }
+      scenarioInputs.price = args.scenarioPrice
+      if (scenarioInputs.price !== inputs.price) changedFields.push('price')
+    }
+    if (args.scenarioInterestRate !== null) {
+      if (typeof args.scenarioInterestRate !== 'number' || !Number.isFinite(args.scenarioInterestRate)) {
+        throw new MortgageValidationError('Provide a valid scenario interest rate.')
+      }
+      scenarioInputs.interestRate = args.scenarioInterestRate
+      if (scenarioInputs.interestRate !== inputs.interestRate) changedFields.push('rate')
+    }
+
+    if (changedFields.length === 0) {
+      throw new MortgageValidationError('Choose at least one mortgage value to change.')
+    }
+
+    const scenarioType = changedFields.length > 1 ? 'multiple' : changedFields[0]
+    const scenarioLabel = [
+      ...(changedFields.includes('deposit') ? [`${compactPounds(scenarioInputs.deposit)} deposit`] : []),
+      ...(changedFields.includes('term') ? [`${scenarioInputs.termYears}y`] : []),
+      ...(changedFields.includes('price') ? [`${compactPounds(scenarioInputs.price)} offer`] : []),
+      ...(changedFields.includes('rate') ? [`${scenarioInputs.interestRate}%`] : []),
+    ].join(' · ')
+    const comparison = compareMortgageScenarios(inputs, scenarioInputs, scenarioType, scenarioLabel)
+    return res.status(200).json({
+      state: 'complete',
+      message: `Compared your current mortgage with ${scenarioLabel}.`,
+      comparison,
     })
   } catch (error: unknown) {
     if (error instanceof MortgageValidationError) {
       return res.status(400).json({ error: error.message })
     }
 
-    console.error('Chatbot error:', error)
-
     const errorWithCode = error as {
       code?: string
       status?: number
     }
+    console.error('Chatbot request failed', {
+      code: typeof errorWithCode?.code === 'string' ? errorWithCode.code : undefined,
+      status: typeof errorWithCode?.status === 'number' ? errorWithCode.status : undefined,
+    })
 
     if (
       errorWithCode.code === 'model_not_found' ||

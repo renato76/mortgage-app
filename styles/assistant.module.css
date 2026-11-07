@@ -49,6 +49,9 @@
 .resultsHeader { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 25px; }
 .resultState { font-size: 10px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
 .resultState::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink); }
+.resultTabs { display: inline-flex; gap: 3px; padding: 3px; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 4px; background: #f0f1f5; }
+.resultTab { min-height: 34px; padding: 6px 12px; border: 0; border-radius: 2px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 550; }
+.resultTab[aria-pressed='true'] { background: white; color: var(--ink); box-shadow: 0 1px 2px rgb(13 0 61 / 12%); }
 .results h2 { font-size: 23px; font-weight: 500; line-height: 1.35; margin: 0 0 22px; }
 .paymentSummary { padding: 4px 0 20px; border: 0; border-bottom: 1px solid var(--line); background: transparent; margin-bottom: 20px; }
 .paymentSummary > p:first-child, .emptyPayment > p { font-size: 12px; color: var(--muted); }

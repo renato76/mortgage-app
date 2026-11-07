@@ -26,14 +26,15 @@ async function request(body: unknown, method = 'POST') {
   return { status: status.mock.calls[0]?.[0], body: json.mock.calls[0]?.[0] }
 }
 
-function toolResponse(argumentsValue: unknown) {
-  const extracted = argumentsValue && typeof argumentsValue === 'object' && !Array.isArray(argumentsValue)
+function toolResponse(argumentsValue: unknown, name = 'extractMortgageInputs') {
+  const extracted = name === 'extractMortgageInputs' && argumentsValue &&
+    typeof argumentsValue === 'object' && !Array.isArray(argumentsValue)
     ? { price: null, deposit: null, interestRate: null, termYears: null, intent: 'calculate', answer: null, ...argumentsValue }
     : argumentsValue
   return {
     choices: [{ message: {
       tool_calls: [{ type: 'function', function: {
-        name: 'extractMortgageInputs', arguments: JSON.stringify(extracted),
+        name, arguments: JSON.stringify(extracted),
       } }],
     } }],
   }
@@ -86,6 +87,182 @@ test.each([0, 5])('executes model tools with the real engine at %f%%', async (ra
   })
 })
 
+test('executes the selected calculation tool with strict single-call routing', async () => {
+  createCompletion.mockResolvedValue(toolResponse(inputs, 'calculateMortgage'))
+  const response = await request({ messages: [{ role: 'user', content: 'Calculate this mortgage' }] })
+
+  expect(response.status).toBe(200)
+  expect(response.body).toMatchObject({
+    state: 'complete',
+    originalInputs: inputs,
+    mortgageResults: calculateMortgageDetails(300000, 60000, 5, 25),
+  })
+  expect(createCompletion).toHaveBeenCalledWith(expect.objectContaining({
+    tool_choice: 'auto',
+    parallel_tool_calls: false,
+    tools: expect.arrayContaining([
+      expect.objectContaining({ function: expect.objectContaining({ name: 'extractMortgageInputs', strict: true }) }),
+      expect.objectContaining({ function: expect.objectContaining({ name: 'calculateMortgage', strict: true }) }),
+      expect.objectContaining({ function: expect.objectContaining({ name: 'compareMortgageScenarios', strict: true }) }),
+    ]),
+  }))
+})
+
+test.each([
+  { ...inputs, price: -1 },
+  { ...inputs, deposit: 400000 },
+  { ...inputs, interestRate: 101 },
+  { ...inputs, termYears: 25.5 },
+  { ...inputs, price: '300000' },
+  { ...inputs, extra: 'unexpected' },
+])('rejects invalid calculation tool arguments %j', async (argumentsValue) => {
+  createCompletion.mockResolvedValue(toolResponse(argumentsValue, 'calculateMortgage'))
+  const response = await request({ messages: [{ role: 'user', content: 'Calculate this mortgage' }] })
+  expect(response.status).toBe(400)
+  expect(response.body).toEqual({ error: expect.any(String) })
+})
+
+test.each([
+  ['deposit', { scenarioDeposit: 80000, scenarioTermYears: null, scenarioPrice: null, scenarioInterestRate: null }, { ...inputs, deposit: 80000 }],
+  ['term', { scenarioDeposit: null, scenarioTermYears: 30, scenarioPrice: null, scenarioInterestRate: null }, { ...inputs, termYears: 30 }],
+  ['price', { scenarioDeposit: null, scenarioTermYears: null, scenarioPrice: 320000, scenarioInterestRate: null }, { ...inputs, price: 320000 }],
+  ['rate', { scenarioDeposit: null, scenarioTermYears: null, scenarioPrice: null, scenarioInterestRate: 4.2 }, { ...inputs, interestRate: 4.2 }],
+] as const)('compares a model-selected %s scenario using deterministic results', async (scenarioType, scenarioChanges, scenarioInputs) => {
+  createCompletion.mockResolvedValue(toolResponse({
+    ...inputs, ...scenarioChanges,
+  }, 'compareMortgageScenarios'))
+  const response = await request({ messages: [{ role: 'user', content: `Compare the ${scenarioType}` }] })
+  const original = calculateMortgageDetails(inputs.price, inputs.deposit, inputs.interestRate, inputs.termYears)
+  const scenario = calculateMortgageDetails(
+    scenarioInputs.price, scenarioInputs.deposit, scenarioInputs.interestRate, scenarioInputs.termYears
+  )
+
+  expect(response.status).toBe(200)
+  expect(response.body).toMatchObject({ comparison: {
+    scenarioType,
+    originalInputs: inputs,
+    scenarioInputs,
+    original: { results: original },
+    scenario: { results: scenario },
+    delta: {
+      monthlyPayment: scenario.monthlyPayment - original.monthlyPayment,
+      totalInterest: scenario.interestPaid - original.interestPaid,
+      totalCost: scenario.totalCost - original.totalCost,
+    },
+  } })
+})
+
+test('compares a requested rate against the last calculated rate', async () => {
+  const baseline = { price: 430000, deposit: 100000, interestRate: 3.74, termYears: 23 }
+  const scenarioInputs = { ...baseline, interestRate: 4.2 }
+  createCompletion.mockResolvedValue(toolResponse({
+    ...baseline,
+    scenarioDeposit: null,
+    scenarioTermYears: null,
+    scenarioPrice: null,
+    scenarioInterestRate: 4.2,
+  }, 'compareMortgageScenarios'))
+
+  const response = await request({ messages: [{
+    role: 'user',
+    content: 'Change rate for comparison to 4.2%',
+    originalInputs: baseline,
+  }] })
+  const original = calculateMortgageDetails(baseline.price, baseline.deposit, baseline.interestRate, baseline.termYears)
+  const scenario = calculateMortgageDetails(scenarioInputs.price, scenarioInputs.deposit, scenarioInputs.interestRate, scenarioInputs.termYears)
+
+  expect(response.status).toBe(200)
+  expect(response.body).toMatchObject({ comparison: {
+    scenarioType: 'rate',
+    originalInputs: baseline,
+    scenarioInputs,
+    original: { results: original },
+    scenario: { label: '4.2%', results: scenario },
+  } })
+})
+
+test('routes “compare with 25 years” to a term comparison and preserves the baseline', async () => {
+  const baseline = { price: 430000, deposit: 100000, interestRate: 3.74, termYears: 23 }
+  const scenarioInputs = { ...baseline, termYears: 25 }
+  createCompletion.mockResolvedValue(toolResponse({
+    ...baseline,
+    scenarioDeposit: null,
+    scenarioTermYears: 25,
+    scenarioPrice: null,
+    scenarioInterestRate: null,
+  }, 'compareMortgageScenarios'))
+
+  const response = await request({ messages: [{
+    role: 'user',
+    content: 'compare with 25 years',
+    originalInputs: baseline,
+  }] })
+
+  expect(response.status).toBe(200)
+  expect(response.body).toMatchObject({ comparison: {
+    scenarioType: 'term',
+    originalInputs: baseline,
+    scenarioInputs,
+    original: { results: calculateMortgageDetails(430000, 100000, 3.74, 23) },
+    scenario: { results: calculateMortgageDetails(430000, 100000, 3.74, 25) },
+  } })
+  expect(createCompletion).toHaveBeenCalledWith(expect.objectContaining({
+    tool_choice: { type: 'function', function: { name: 'compareMortgageScenarios' } },
+  }))
+})
+
+test('keeps the calculated baseline while comparing a new deposit and term together', async () => {
+  const baseline = { price: 430000, deposit: 100000, interestRate: 3.74, termYears: 23 }
+  const scenarioInputs = { ...baseline, deposit: 120000, termYears: 25, interestRate: 4.2 }
+  createCompletion.mockResolvedValue(toolResponse({
+    ...baseline,
+    deposit: scenarioInputs.deposit,
+    termYears: scenarioInputs.termYears,
+    interestRate: scenarioInputs.interestRate,
+    scenarioDeposit: scenarioInputs.deposit,
+    scenarioTermYears: scenarioInputs.termYears,
+    scenarioPrice: null,
+    scenarioInterestRate: scenarioInputs.interestRate,
+  }, 'compareMortgageScenarios'))
+
+  const response = await request({ messages: [{
+    role: 'user',
+    content: 'Compare it with a £120K deposit and 25 years term',
+    originalInputs: baseline,
+  }] })
+  const original = calculateMortgageDetails(baseline.price, baseline.deposit, baseline.interestRate, baseline.termYears)
+  const scenario = calculateMortgageDetails(scenarioInputs.price, scenarioInputs.deposit, scenarioInputs.interestRate, scenarioInputs.termYears)
+
+  expect(response.status).toBe(200)
+  expect(response.body).toMatchObject({ comparison: {
+    scenarioType: 'multiple',
+    originalInputs: baseline,
+    scenarioInputs,
+    original: { results: original },
+    scenario: { label: '£120k deposit · 25y · 4.2%', results: scenario },
+  } })
+})
+
+test.each([
+  { ...inputs, scenarioDeposit: 400000, scenarioTermYears: null, scenarioPrice: null, scenarioInterestRate: null },
+  { ...inputs, scenarioDeposit: null, scenarioTermYears: 0, scenarioPrice: null, scenarioInterestRate: null },
+  { ...inputs, scenarioDeposit: null, scenarioTermYears: '30', scenarioPrice: null, scenarioInterestRate: null },
+  { ...inputs, scenarioDeposit: null, scenarioTermYears: null, scenarioPrice: null, scenarioInterestRate: 101 },
+  { ...inputs, scenarioDeposit: null, scenarioTermYears: null, scenarioPrice: null, scenarioInterestRate: null },
+])('rejects invalid scenario tool arguments %j', async (argumentsValue) => {
+  createCompletion.mockResolvedValue(toolResponse(argumentsValue, 'compareMortgageScenarios'))
+  const response = await request({ messages: [{ role: 'user', content: 'Compare these figures' }] })
+  expect(response.status).toBe(400)
+})
+
+test('rejects multiple model tool calls', async () => {
+  const oneCall = toolResponse(inputs, 'calculateMortgage')
+  const calls = oneCall.choices[0].message.tool_calls
+  createCompletion.mockResolvedValue({ choices: [{ message: { tool_calls: [...calls, ...calls] } }] })
+  const response = await request({ messages: [{ role: 'user', content: 'Calculate this mortgage' }] })
+  expect(response.status).toBe(502)
+})
+
 test.each([
   { ...inputs, price: -1 }, { ...inputs, deposit: 400000 },
   { ...inputs, interestRate: -1 }, { ...inputs, termYears: 25.5 },
@@ -95,6 +272,33 @@ test.each([
   const response = await request({ messages: [{ role: 'user', content: 'Calculate' }] })
   expect(response.status).toBe(400)
   expect(response.body).toEqual({ error: expect.any(String) })
+})
+
+test.each([
+  { ...inputs, intent: 'calculate', answer: undefined },
+  { ...inputs, intent: 'calculate', answer: null, extra: 'unexpected' },
+  { ...inputs, intent: 'calculate', answer: 'not allowed for calculations' },
+])('rejects malformed structured tool output %j', async (argumentsValue) => {
+  createCompletion.mockResolvedValue(toolResponse(argumentsValue))
+  const response = await request({ messages: [{ role: 'user', content: 'Calculate' }] })
+  expect(response.status).toBe(400)
+  expect(response.body).toEqual({ error: expect.any(String) })
+})
+
+test('does not log conversation figures or upstream error details', async () => {
+  const privateFigures = 'property price £430,000 and monthly income £6,250'
+  const logSpy = jest.spyOn(console, 'log')
+  const errorSpy = jest.spyOn(console, 'error')
+  createCompletion.mockRejectedValue(new Error(`Upstream request failed for ${privateFigures}`))
+
+  await request({ messages: [{ role: 'user', content: privateFigures }] })
+
+  const logOutput = JSON.stringify([...logSpy.mock.calls, ...errorSpy.mock.calls])
+  expect(logOutput).not.toContain(privateFigures)
+  expect(errorSpy).toHaveBeenCalledWith('Chatbot request failed', {
+    code: undefined,
+    status: undefined,
+  })
 })
 
 test('returns a cash purchase without offering a larger deposit', async () => {
@@ -227,12 +431,22 @@ test.each([
   })
   expect(createCompletion).toHaveBeenCalledTimes(1)
   expect(createCompletion).toHaveBeenCalledWith(expect.objectContaining({
-    tool_choice: { type: 'function', function: { name: 'extractMortgageInputs' } },
+    tool_choice: 'auto',
     parallel_tool_calls: false,
-    tools: [expect.objectContaining({ function: expect.objectContaining({
-      strict: true,
-      parameters: expect.objectContaining({ additionalProperties: false }),
-    }) })],
+    tools: expect.arrayContaining([
+      expect.objectContaining({ function: expect.objectContaining({
+        name: 'extractMortgageInputs', strict: true,
+        parameters: expect.objectContaining({ additionalProperties: false }),
+      }) }),
+      expect.objectContaining({ function: expect.objectContaining({
+        name: 'calculateMortgage', strict: true,
+        parameters: expect.objectContaining({ additionalProperties: false }),
+      }) }),
+      expect.objectContaining({ function: expect.objectContaining({
+        name: 'compareMortgageScenarios', strict: true,
+        parameters: expect.objectContaining({ additionalProperties: false }),
+      }) }),
+    ]),
   }))
 })
 
@@ -272,5 +486,5 @@ test('returns a retryable error instead of an unstructured redundant confirmatio
   createCompletion.mockResolvedValue({ choices: [{ message: { content: 'Please confirm your interest rate.' } }] })
   const response = await request({ messages: [{ role: 'user', content: 'Price 430K, deposit 100K, term 23 years, rate 3.74%' }] })
   expect(response.status).toBe(502)
-  expect(response.body).toEqual({ error: expect.stringContaining('extract your mortgage inputs') })
+  expect(response.body).toEqual({ error: expect.stringContaining('select one supported mortgage action') })
 })

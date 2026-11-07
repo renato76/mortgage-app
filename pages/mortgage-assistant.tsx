@@ -12,6 +12,20 @@ const currency = new Intl.NumberFormat('en-GB', {
   style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2,
 })
 const money = (value: number) => currency.format(value)
+const comparisonTitles = {
+  deposit: 'Deposit comparison',
+  term: 'Mortgage term comparison',
+  price: 'Offer price comparison',
+  rate: 'Interest rate comparison',
+  multiple: 'Mortgage scenario comparison',
+}
+const comparisonNotes = {
+  deposit: 'Offer price, rate and term are unchanged. A different deposit changes the cash needed upfront; no mortgage rate is guaranteed.',
+  term: 'Offer price, deposit and rate are unchanged. A longer term can reduce monthly repayments while increasing total interest.',
+  price: 'Deposit, rate and term are unchanged. Taxes, fees and other purchase costs are not included.',
+  rate: 'Offer price, deposit and term are unchanged. This rate is illustrative and is not a guaranteed lender offer.',
+  multiple: 'Only the requested mortgage inputs change; all other assumptions stay the same. Taxes, fees and other purchase costs are not included.',
+}
 
 function BalanceChart({ results }: { results: ChatbotMortgageResults }) {
   if (!results.remainingBalance?.length || results.capitalPaid <= 0) return null
@@ -38,12 +52,19 @@ const MortgageAssistant = () => {
   const [chatbotResults, setChatbotResults] =
     useState<ChatbotMortgageResults | null>(null)
   const [comparison, setComparison] = useState<MortgageComparison | null>(null)
+  const [resultsView, setResultsView] = useState<'estimate' | 'compare'>('estimate')
   const [inputs, setInputs] = useState<MortgageInputs | null>(null)
 
   const handleCalculation = (results: ChatbotMortgageResults, originalInputs?: MortgageInputs) => {
     setChatbotResults(results)
     setComparison(null)
+    setResultsView('estimate')
     setInputs(originalInputs || null)
+  }
+
+  const handleComparison = (nextComparison: MortgageComparison) => {
+    setComparison(nextComparison)
+    setResultsView('compare')
   }
 
   return (
@@ -60,23 +81,31 @@ const MortgageAssistant = () => {
         <div className={styles.pageHeading}><div><p className={styles.eyebrow}>YOUR HOME. YOUR NUMBERS.</p><h1>A clearer view of your mortgage.</h1></div><span className={styles.estimateBadge}>Repayment estimates</span></div>
         <div className={styles.workspace}>
           <section id="conversation" className={styles.conversationSection} aria-label="Mortgage conversation">
-            <Chatbot setChatbotResults={handleCalculation} setComparison={setComparison} />
+            <Chatbot setChatbotResults={handleCalculation} setComparison={handleComparison} />
           </section>
           <aside className={styles.results} aria-label="Mortgage results" aria-live="polite">
-            <div className={styles.resultsHeader}><span className={styles.eyebrow}>{comparison ? 'YOUR OPTIONS' : 'YOUR ESTIMATE'}</span><span className={styles.resultState}>{chatbotResults || comparison ? 'Calculated' : 'Not calculated'}</span></div>
-            {comparison ? (
+            <div className={styles.resultsHeader}><span className={styles.eyebrow}>{resultsView === 'compare' && comparison ? 'YOUR OPTIONS' : 'YOUR ESTIMATE'}</span><span className={styles.resultState}>{chatbotResults || comparison ? 'Calculated' : 'Not calculated'}</span></div>
+            {comparison && (
+              <div className={styles.resultTabs} role="group" aria-label="Results view">
+                <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'estimate'} onClick={() => setResultsView('estimate')}>Estimate</button>
+                <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'compare'} onClick={() => setResultsView('compare')}>Compare</button>
+              </div>
+            )}
+            {comparison && resultsView === 'compare' ? (
               <>
-                <div className={styles.comparisonTitle}><h2>Deposit comparison</h2><button className={styles.textButton} type="button" onClick={() => setComparison(null)}>Back to estimate</button></div>
+                <div className={styles.comparisonTitle}><h2>{comparisonTitles[comparison.scenarioType]}</h2></div>
                 <div className={styles.paymentSummary}><p>{comparison.delta.monthlyPayment <= 0 ? 'Monthly repayment reduction' : 'Monthly repayment increase'}</p><strong>{money(Math.abs(comparison.delta.monthlyPayment))}<span>/ month</span></strong><p>{money(Math.abs(comparison.delta.totalInterest))} {comparison.delta.totalInterest <= 0 ? 'less' : 'more'} interest over the term</p></div>
-                <p className={styles.propertyPrice}>Property price <strong>{money(comparison.originalPrice)}</strong></p>
-                <div className={styles.tableWrap}><table className={styles.comparisonTable}><caption className={styles.srOnly}>Current deposit and increased deposit mortgage comparison</caption><thead><tr><th scope="col">The detail</th><th scope="col">Current</th><th scope="col">Higher deposit</th></tr></thead><tbody>{[
-                  ['Deposit', comparison.originalPrice - comparison.original.results.capitalPaid, comparison.originalPrice - comparison.scenario.results.capitalPaid],
-                  ['Borrowing', comparison.original.results.capitalPaid, comparison.scenario.results.capitalPaid],
-                  ['Monthly repayment', comparison.original.results.monthlyPayment, comparison.scenario.results.monthlyPayment],
-                  ['Total interest', comparison.original.results.interestPaid, comparison.scenario.results.interestPaid],
-                  ['Total repayments', comparison.original.results.totalCost, comparison.scenario.results.totalCost],
-                ].map(([label, original, scenario]) => <tr key={label}><th scope="row">{label}</th><td>{money(Number(original))}</td><td>{money(Number(scenario))}</td></tr>)}</tbody></table></div>
-                <p className={styles.disclaimer}>Same rate and term in both scenarios. A larger deposit uses more cash upfront; it does not guarantee a better rate.</p>
+                <div className={styles.tableWrap}><table className={styles.comparisonTable}><caption className={styles.srOnly}>{comparisonTitles[comparison.scenarioType]}: {comparison.original.label} versus {comparison.scenario.label}</caption><thead><tr><th scope="col">The detail</th><th scope="col">{comparison.original.label}</th><th scope="col">{comparison.scenario.label}</th></tr></thead><tbody>{[
+                  ['Offer price', money(comparison.originalInputs.price), money(comparison.scenarioInputs.price)],
+                  ['Deposit', money(comparison.originalInputs.deposit), money(comparison.scenarioInputs.deposit)],
+                  ['Mortgage term', `${comparison.originalInputs.termYears} years`, `${comparison.scenarioInputs.termYears} years`],
+                  ['Annual rate', `${comparison.originalInputs.interestRate}%`, `${comparison.scenarioInputs.interestRate}%`],
+                  ['Borrowing', money(comparison.original.results.capitalPaid), money(comparison.scenario.results.capitalPaid)],
+                  ['Monthly repayment', money(comparison.original.results.monthlyPayment), money(comparison.scenario.results.monthlyPayment)],
+                  ['Total interest', money(comparison.original.results.interestPaid), money(comparison.scenario.results.interestPaid)],
+                  ['Total repayments', money(comparison.original.results.totalCost), money(comparison.scenario.results.totalCost)],
+                ].map(([label, original, scenario]) => <tr key={label}><th scope="row">{label}</th><td>{original}</td><td>{scenario}</td></tr>)}</tbody></table></div>
+                <p className={styles.disclaimer}>{comparisonNotes[comparison.scenarioType]}</p>
               </>
             ) : chatbotResults ? (
               <>
