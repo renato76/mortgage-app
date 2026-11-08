@@ -68,8 +68,11 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   const [ctaPrompt, setCtaPrompt] = useState<CtaPrompt | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [failedMessages, setFailedMessages] = useState<ChatMessage[] | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const [errorType, setErrorType] = useState<'transient' | 'permanent' | null>(null)
   const requestInFlight = useRef(false)
   const chatLogRef = useRef<HTMLDivElement>(null)
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Store last known mortgage inputs
   const [lastInputs, setLastInputs] = useState<MortgageInputs | null>(null)
@@ -85,13 +88,108 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
     }
   }, [messages, ctaPrompt])
 
-  const submitMessages = async (newMessages: ChatMessage[]) => {
+  // Clean up retry timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current)
+    }
+  }, [])
+
+  // Map error messages to user-friendly text and classify as transient/permanent
+  const getErrorInfo = (error: unknown): { message: string; type: 'transient' | 'permanent' } => {
+    if (!(error instanceof Error)) {
+      return {
+        message: 'Something went wrong. Please check your connection and try again.',
+        type: 'transient',
+      }
+    }
+
+    const errorMsg = error.message.toLowerCase()
+
+    // Transient errors (worth retrying)
+    if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+      return {
+        message: 'Network connection error. Retrying automatically...',
+        type: 'transient',
+      }
+    }
+    if (errorMsg.includes('timeout')) {
+      return {
+        message: 'Request timed out. Retrying automatically...',
+        type: 'transient',
+      }
+    }
+    if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+      return {
+        message: 'API is busy. Retrying in a moment...',
+        type: 'transient',
+      }
+    }
+    if (errorMsg.includes('unreadable response')) {
+      return {
+        message: 'Server returned an invalid response. Retrying...',
+        type: 'transient',
+      }
+    }
+    if (errorMsg.includes('empty response')) {
+      return {
+        message: 'Server returned no data. Retrying...',
+        type: 'transient',
+      }
+    }
+
+    // Permanent errors (don't retry automatically)
+    if (errorMsg.includes('invalid') || errorMsg.includes('validation')) {
+      return {
+        message: `Invalid input: ${error.message}. Please correct and try again.`,
+        type: 'permanent',
+      }
+    }
+    if (errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+      return {
+        message: 'Authentication failed. The mortgage assistant is not configured.',
+        type: 'permanent',
+      }
+    }
+    if (errorMsg.includes('forbidden') || errorMsg.includes('403')) {
+      return {
+        message: 'Access denied. Please contact support.',
+        type: 'permanent',
+      }
+    }
+
+    // Default: assume transient for safety
+    return {
+      message: error.message || 'An error occurred. Please try again.',
+      type: 'transient',
+    }
+  }
+
+  // Retry with exponential backoff
+  const retryWithBackoff = (messages: ChatMessage[], attempt: number = 0) => {
+    if (attempt >= 3) {
+      // Max retries reached, give up
+      setRetryCount(0)
+      setErrorType('permanent')
+      return
+    }
+
+    const delay = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
+    setRetryCount(attempt + 1)
+
+    retryTimeoutRef.current = setTimeout(() => {
+      submitMessages(messages, attempt + 1)
+    }, delay)
+  }
+
+  const submitMessages = async (newMessages: ChatMessage[], retryAttempt: number = 0) => {
     if (requestInFlight.current) return
     requestInFlight.current = true
 
     setMessages(newMessages)
     setLoading(true)
     setError(null)
+    setErrorType(null)
     setFailedMessages(null)
     setCtaPrompt(null) // clear previous CTA
 
@@ -144,13 +242,19 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
       if (data.ctaPrompt) {
         setCtaPrompt(data.ctaPrompt)
       }
+
+      // Clear retry state on success
+      setRetryCount(0)
     } catch (error) {
-      setError(
-        error instanceof Error && !(error instanceof TypeError)
-          ? error.message
-          : 'Unable to reach the mortgage assistant. Check your connection and try again.'
-      )
+      const { message, type } = getErrorInfo(error)
+      setError(message)
+      setErrorType(type)
       setFailedMessages(newMessages)
+
+      // Auto-retry for transient errors
+      if (type === 'transient' && retryAttempt < 3) {
+        retryWithBackoff(newMessages, retryAttempt)
+      }
     } finally {
       requestInFlight.current = false
       setLoading(false)
@@ -234,16 +338,25 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
       </div>
 
       {error && (
-        <div role="alert" className="mb-3 p-3 border border-red-300 bg-red-50 text-red-800 rounded">
-          <p>{error}</p>
-          {failedMessages && (
+        <div role="alert" className={styles.errorAlert}>
+          <p className={styles.errorMessage}>{error}</p>
+          {retryCount > 0 && (
+            <p className={styles.errorRetryStatus}>
+              Retry attempt {retryCount} of 3...
+            </p>
+          )}
+          {errorType === 'permanent' && failedMessages && (
             <button
               type="button"
-              onClick={() => submitMessages(failedMessages)}
+              onClick={() => {
+                setRetryCount(0)
+                submitMessages(failedMessages, 0)
+              }}
               disabled={loading}
-              className="mt-2 px-3 py-1 border border-red-800 rounded font-semibold disabled:opacity-50"
+              className={styles.errorRetryButton}
+              aria-label="Retry the failed message"
             >
-              Retry
+              Try Again
             </button>
           )}
         </div>
