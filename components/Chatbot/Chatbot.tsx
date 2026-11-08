@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import styles from '@/styles/assistant.module.css'
 
 export interface MortgageInputs {
@@ -69,6 +69,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   const [error, setError] = useState<string | null>(null)
   const [failedMessages, setFailedMessages] = useState<ChatMessage[] | null>(null)
   const requestInFlight = useRef(false)
+  const chatLogRef = useRef<HTMLDivElement>(null)
 
   // Store last known mortgage inputs
   const [lastInputs, setLastInputs] = useState<MortgageInputs | null>(null)
@@ -76,6 +77,13 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
     originalInputs: MortgageInputs
     scenarioInputs: MortgageInputs
   } | null>(null)
+
+  // Auto-scroll chat log to bottom when messages or CTA changes
+  useEffect(() => {
+    if (chatLogRef.current) {
+      chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight
+    }
+  }, [messages, ctaPrompt])
 
   const submitMessages = async (newMessages: ChatMessage[]) => {
     if (requestInFlight.current) return
@@ -184,6 +192,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
       <h3 className={styles.chatbotTitle}>Mortgage Chatbot</h3>
 
       <div
+        ref={chatLogRef}
         role="log"
         aria-label="Mortgage conversation"
         aria-live="polite"
