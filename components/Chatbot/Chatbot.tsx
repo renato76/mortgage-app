@@ -73,6 +73,8 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   const requestInFlight = useRef(false)
   const chatLogRef = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const messageInputRef = useRef<HTMLInputElement>(null)
+  const sendButtonRef = useRef<HTMLButtonElement>(null)
 
   // Store last known mortgage inputs
   const [lastInputs, setLastInputs] = useState<MortgageInputs | null>(null)
@@ -94,6 +96,16 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current)
     }
   }, [])
+
+  // Focus input after bot responds (for keyboard users)
+  useEffect(() => {
+    if (!loading && messages.length > 0 && messageInputRef.current) {
+      // Only auto-focus if user hasn't selected a CTA button
+      if (!ctaPrompt) {
+        messageInputRef.current.focus()
+      }
+    }
+  }, [messages, ctaPrompt, loading])
 
   // Map error messages to user-friendly text and classify as transient/permanent
   const getErrorInfo = (error: unknown): { message: string; type: 'transient' | 'permanent' } => {
@@ -375,6 +387,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
       )}
 
       <input
+        ref={messageInputRef}
         aria-label="Message"
         disabled={loading}
         value={input}
@@ -385,6 +398,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
       />
 
       <button
+        ref={sendButtonRef}
         onClick={() => sendMessage()}
         disabled={loading}
         className={styles.actionButton}

@@ -398,7 +398,7 @@ export default async function handler(
         {
           role: 'system',
           content:
-            'You are a UK mortgage assistant. Select exactly one tool: use extractMortgageInputs for general questions or when calculation inputs are missing or ambiguous; use calculateMortgage for a requested mortgage estimate when all inputs are known; use compareMortgageScenarios when the user asks to compare scenarios. Carry forward user-provided figures across the conversation, applying corrections and clears. Never treat assistant examples as user inputs. Expand k/K as thousands and m/M as millions for prices and deposits. Rates are annual percentages: 3.74% means 3.74. For a first comparison, use the calculated inputs as the baseline and change only requested scenario values. For follow-up changes, preserve the original baseline and carry forward the latest alternative scenario, changing only values the user requests. A single scenario may change multiple inputs. Never invent inputs, calculate figures yourself, or claim lender approval or guaranteed rates. For general questions, use concise UK terminology and do not invent current rates.',
+            'You are a UK mortgage assistant. Select exactly one tool: use extractMortgageInputs for general questions or when calculation inputs are missing or ambiguous; use calculateMortgage for a requested mortgage estimate when all inputs are known; use compareMortgageScenarios when the user asks to compare scenarios, explore alternatives, or answer "what if" questions (e.g., "what if I save more for deposit", "compare with a higher interest rate", "if I extended the term", "would a bigger deposit help"). Carry forward user-provided figures across the conversation, applying corrections and clears. Never treat assistant examples as user inputs. Expand k/K as thousands and m/M as millions for prices and deposits. Rates are annual percentages: 3.74% means 3.74. For a first comparison, use the calculated inputs as the baseline and change only requested scenario values. For follow-up changes, preserve the original baseline and carry forward the latest alternative scenario, changing only values the user requests. A single scenario may change multiple inputs. Never invent inputs, calculate figures yourself, or claim lender approval or guaranteed rates. For general questions, use concise UK terminology and do not invent current rates.',
         },
         ...(storedInputs && storedScenarioInputs ? [{
           role: 'system' as const,
@@ -577,10 +577,36 @@ export default async function handler(
       ...(changedFields.includes('price') ? [`${compactPounds(scenarioInputs.price)} offer`] : []),
       ...(changedFields.includes('rate') ? [`${scenarioInputs.interestRate}%`] : []),
     ].join(' · ')
+    
+    const originalResults = calculateMortgageDetails(
+      inputs.price,
+      inputs.deposit,
+      inputs.interestRate,
+      inputs.termYears
+    )
     const comparison = compareMortgageScenarios(inputs, scenarioInputs, scenarioType, scenarioLabel)
+    
+    // Build detailed comparison message (same as CTA button flow)
+    const delta = {
+      monthlyPayment: comparison.delta.monthlyPayment,
+      totalInterest: comparison.delta.totalInterest,
+      totalCost: comparison.delta.totalCost,
+    }
+    const pounds = new Intl.NumberFormat('en-GB', {
+      style: 'currency', currency: 'GBP', maximumFractionDigits: 0,
+    })
+    
+    const monthlyDifference = Math.abs(delta.monthlyPayment)
+    const direction = delta.monthlyPayment < 0 ? 'reduce' : 'increase'
+    const interestExplanation = inputs.interestRate === 0
+      ? 'At 0% interest, there is no mortgage interest to save.'
+      : `Over the ${inputs.termYears}-year term, you would also ${delta.totalInterest < 0 ? 'save' : 'pay'} approximately ${pounds.format(Math.abs(delta.totalInterest))} in interest.`
+    
+    const detailedMessage = `Compared with ${scenarioLabel}: your monthly payment would ${direction} by ${pounds.format(monthlyDifference)}. ${interestExplanation} Total cost difference: ${pounds.format(delta.totalCost)}.`
+    
     return res.status(200).json({
       state: 'complete',
-      message: `Compared your current mortgage with ${scenarioLabel}.`,
+      message: detailedMessage,
       comparison,
     })
   } catch (error: unknown) {

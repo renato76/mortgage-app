@@ -83,8 +83,9 @@ const MortgageAssistant = () => {
           <section id="conversation" className={styles.conversationSection} aria-label="Mortgage conversation">
             <Chatbot setChatbotResults={handleCalculation} setComparison={handleComparison} />
           </section>
-          <aside className={styles.results} aria-label="Mortgage results" aria-live="polite">
-            <div className={styles.resultsHeader}><span className={styles.eyebrow}>{resultsView === 'compare' && comparison ? 'YOUR OPTIONS' : 'YOUR ESTIMATE'}</span><span className={styles.resultState}>{chatbotResults || comparison ? 'Calculated' : 'Not calculated'}</span></div>
+          {(chatbotResults || comparison) && (
+            <aside className={styles.results} aria-label="Mortgage results" aria-live="polite">
+              <div className={styles.resultsHeader}><div><span className={styles.eyebrow}>{resultsView === 'compare' && comparison ? 'YOUR OPTIONS' : 'YOUR ESTIMATE'}</span><span className={styles.resultState}>Calculated</span></div><button type="button" onClick={() => { setChatbotResults(null); setComparison(null); }} className={styles.resetButton} title="Clear results">Reset</button></div>
             {comparison && (
               <div className={styles.resultTabs} role="group" aria-label="Results view">
                 <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'estimate'} onClick={() => setResultsView('estimate')}>Estimate</button>
@@ -121,7 +122,8 @@ const MortgageAssistant = () => {
             ) : (
               <div className={styles.emptyResults}><h2>Your mortgage,<br />at a glance.</h2><div className={styles.emptyPayment}><p>Estimated monthly repayment</p><strong>&pound;&nbsp;&mdash;<span>/ month</span></strong></div><dl className={styles.breakdown}><div><dt>Mortgage borrowing</dt><dd>&mdash;</dd></div><div><dt>Total interest</dt><dd>&mdash;</dd></div><div><dt>Total mortgage repayments</dt><dd>&mdash;</dd></div></dl><div className={styles.emptyRule} /><p className={styles.disclaimer}>No assumptions. No figures until your scenario is calculated.</p></div>
             )}
-          </aside>
+            </aside>
+          )}
         </div>
         <footer className={styles.footer}><span>Mortgage Assistant</span><p>Illustrative estimates, not financial advice, a mortgage offer or a lender eligibility decision.</p></footer>
       </main>
