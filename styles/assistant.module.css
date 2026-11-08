@@ -59,18 +59,18 @@
 .results .comparisonSummary > p:first-child { font-size: 16px; color: var(--ink); }
 .results .comparisonSummary > strong { gap: 7px; font-size: 27px; line-height: 1.3; }
 .results .comparisonSummary > strong > span { font-size: 13px; }
-.results .comparisonSummary > p:last-child { font-size: 14px; line-height: 1.6; margin-top: 10px; }
+.results .comparisonSummary > p:last-child { font-size: 18px; line-height: 1.6; margin-top: 10px; font-weight: 550; }
 .breakdown { margin: 0; }
-.breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .breakdown dt { color: var(--muted); }
 .breakdown dd { font-weight: 550; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .chart { margin-top: 25px; }
-.chart figcaption { font-size: 11px; font-weight: 550; margin-bottom: 12px; }
+.chart figcaption { font-size: 13px; font-weight: 550; margin-bottom: 12px; }
 .chart svg { display: block; width: 100%; aspect-ratio: 320 / 132; }
-.chartAxis { display: flex; justify-content: space-between; color: var(--muted); font-size: 9px; }
+.chartAxis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
 .assumptions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
-.assumptions dt { color: var(--muted); font-size: 10px; margin-bottom: 3px; }
-.assumptions dd { font-size: 12px; font-weight: 550; }
+.assumptions dt { color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+.assumptions dd { font-size: 15px; font-weight: 550; }
 .disclaimer { color: var(--muted); font-size: 10px; line-height: 1.85; margin-top: 20px; }
 .emptyResults { padding: 2px 0 10px; }
 .emptyResults h2 { font-size: 28px; line-height: 1.4; margin-bottom: 28px; }
@@ -85,13 +85,13 @@
 .propertyPrice { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--muted); margin: 0 0 18px; }
 .propertyPrice strong { color: var(--ink); font-weight: 550; }
 .tableWrap { overflow-x: auto; }
-.comparisonTable { width: 100%; border-collapse: collapse; font-size: 11px; }
-.comparisonTable th, .comparisonTable td { border-bottom: 1px solid var(--line); text-align: right; padding: 12px 8px; font-variant-numeric: tabular-nums; }
-.comparisonTable thead th { color: var(--muted); font-weight: 500; font-size: 10px; }
+.comparisonTable { width: 100%; border-collapse: collapse; font-size: 16px; }
+.comparisonTable th, .comparisonTable td { border-bottom: 1px solid var(--line); text-align: right; padding: 14px 10px; font-variant-numeric: tabular-nums; }
+.comparisonTable thead th { color: var(--muted); font-weight: 500; font-size: 13px; }
 .comparisonTable th:first-child { text-align: left; padding-left: 0; font-weight: 500; }
 .comparisonTable td { white-space: nowrap; font-weight: 550; }
 .comparisonTable td:last-child, .comparisonTable thead th:last-child { background: var(--accent-soft); color: var(--ink); }
-.comparisonTable .monthlyRepaymentRow th, .comparisonTable .monthlyRepaymentRow td { background: var(--accent-soft); font-size: 12px; font-weight: 700; }
+.comparisonTable .monthlyRepaymentRow th, .comparisonTable .monthlyRepaymentRow td { background: var(--accent-soft); font-size: 15px; font-weight: 700; }
 .comparisonTable .monthlyRepaymentRow td:last-child { background: #c9f1e4; }
 .chatbot { padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); }
 .chatbotHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
@@ -155,6 +155,9 @@
   .paymentSummary > strong { font-size: 36px; }
   .assumptions { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .assumptions dd { font-size: 10px; overflow-wrap: anywhere; }
-  .comparisonTable { min-width: 310px; }
+  .comparisonTable { min-width: 310px; font-size: 12px; }
+  .comparisonTable th, .comparisonTable td { padding: 10px 6px; }
+  .comparisonTable thead th { font-size: 11px; }
+  .comparisonTable .monthlyRepaymentRow th, .comparisonTable .monthlyRepaymentRow td { font-size: 12px; }
   .footer { margin-top: 18px; flex-direction: column; align-items: flex-start; gap: 8px; }
 }

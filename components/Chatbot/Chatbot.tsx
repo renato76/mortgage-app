@@ -70,6 +70,7 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   const [failedMessages, setFailedMessages] = useState<ChatMessage[] | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [errorType, setErrorType] = useState<'transient' | 'permanent' | null>(null)
+  const [showComparisonHint, setShowComparisonHint] = useState(false)
   const requestInFlight = useRef(false)
   const chatLogRef = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -294,6 +295,20 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
 
   const handleCtaSelection = (value: string) => {
     if (!value || !ctaPrompt) return
+    
+    // If they want to compare scenarios, focus input and set helpful placeholder
+    if (ctaPrompt.type === 'scenario_comparison' && value === 'compare_scenarios') {
+      setInput('')
+      setShowComparisonHint(true)
+      // Focus the input field and let them type their comparison question
+      setTimeout(() => {
+        messageInputRef.current?.focus()
+      }, 100)
+      // Clear the CTA prompt so they see the input field
+      setCtaPrompt(null)
+      return
+    }
+    
     const ctaMessage = `CTA_SELECTION:${ctaPrompt.type}:${value}`
     // If this is a deposit_amount_selection, attach lastInputs
     if (ctaPrompt.type === 'deposit_amount_selection' && lastInputs) {
@@ -391,8 +406,13 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         aria-label="Message"
         disabled={loading}
         value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Ask about mortgages..."
+        onChange={(e) => {
+          setInput(e.target.value)
+          if (e.target.value) setShowComparisonHint(false)
+        }}
+        placeholder={showComparisonHint 
+          ? "e.g., Compare 25 vs 30 year, or Try 5% interest rate, or What if I saved £10k more?"
+          : "Ask about mortgages..."}
         className={styles.messageInput}
         onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
       />

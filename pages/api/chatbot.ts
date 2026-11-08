@@ -392,6 +392,19 @@ export default async function handler(
       storedInputs && (hasComparisonIntent || (hasScenarioChangeIntent && storedScenarioInputs))
     )
 
+    // If user asks for comparison/scenario change but no baseline exists, guide them to calculate first
+    if ((hasComparisonIntent || hasScenarioChangeIntent) && !storedInputs) {
+      return res.status(200).json({
+        state: 'collecting',
+        message: 'To compare scenarios, I first need to calculate a baseline. Please provide:\n\n' +
+          '• Property price (£)\n' +
+          '• Deposit amount (£)\n' +
+          '• Annual interest rate (%)\n' +
+          '• Mortgage term (years)\n\n' +
+          'For example: "Calculate figures for a £300k property, £50k deposit, 4.5% rate, 25 year term"',
+      })
+    }
+
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -496,11 +509,11 @@ export default async function handler(
         originalInputs: inputs,
         ...(mortgageResults.fundingType === 'mortgage' && {
           ctaPrompt: {
-            question: 'Would you like to compare a larger deposit?',
-            type: 'deposit_scenarios',
+            question: 'Would you like to compare this with a different scenario?',
+            type: 'scenario_comparison',
             options: [
-              { label: 'Yes, show me', value: 'show_deposit_options' },
-              { label: "No, I'm good", value: 'decline' },
+              { label: 'Yes, compare', value: 'compare_scenarios' },
+              { label: "No, thanks", value: 'decline' },
             ],
           },
         }),
@@ -521,11 +534,11 @@ export default async function handler(
         originalInputs: inputs,
         ...(mortgageResults.fundingType === 'mortgage' && {
           ctaPrompt: {
-            question: 'Would you like to compare a larger deposit?',
-            type: 'deposit_scenarios',
+            question: 'Would you like to compare this with a different scenario?',
+            type: 'scenario_comparison',
             options: [
-              { label: 'Yes, show me', value: 'show_deposit_options' },
-              { label: "No, I'm good", value: 'decline' },
+              { label: 'Yes, compare', value: 'compare_scenarios' },
+              { label: "No, thanks", value: 'decline' },
             ],
           },
         }),

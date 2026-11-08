@@ -12,6 +12,32 @@ const currency = new Intl.NumberFormat('en-GB', {
   style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2,
 })
 const money = (value: number) => currency.format(value)
+
+const buildComparisonDescription = (comparison: MortgageComparison): string => {
+  const { scenarioInputs, delta } = comparison
+  const changed: string[] = []
+  
+  if (scenarioInputs.deposit !== comparison.originalInputs.deposit) {
+    changed.push(`£${scenarioInputs.deposit.toLocaleString()} deposit`)
+  }
+  if (scenarioInputs.interestRate !== comparison.originalInputs.interestRate) {
+    changed.push(`${scenarioInputs.interestRate}% rate`)
+  }
+  if (scenarioInputs.termYears !== comparison.originalInputs.termYears) {
+    changed.push(`${scenarioInputs.termYears} year term`)
+  }
+  if (scenarioInputs.price !== comparison.originalInputs.price) {
+    changed.push(`£${scenarioInputs.price.toLocaleString()} property`)
+  }
+  
+  const changeDesc = changed.join(', ')
+  const direction = delta.totalInterest < 0 ? 'less' : 'more'
+  const interestAmount = money(Math.abs(delta.totalInterest))
+  const term = scenarioInputs.termYears
+  
+  return `With ${changeDesc}, that's ${interestAmount} ${direction} interest paid over the ${term} year term.`
+}
+
 const comparisonTitles = {
   deposit: 'Deposit comparison',
   term: 'Mortgage term comparison',
@@ -95,7 +121,7 @@ const MortgageAssistant = () => {
             {comparison && resultsView === 'compare' ? (
               <>
                 <div className={styles.comparisonTitle}><h2>{comparisonTitles[comparison.scenarioType]}</h2></div>
-                <div className={`${styles.paymentSummary} ${styles.comparisonSummary}`}><p>{comparison.delta.monthlyPayment <= 0 ? 'Monthly repayment reduction' : 'Monthly repayment increase'}</p><strong>{money(Math.abs(comparison.delta.monthlyPayment))}<span>/ month</span></strong><p>{money(Math.abs(comparison.delta.totalInterest))} {comparison.delta.totalInterest <= 0 ? 'less' : 'more'} interest over the term</p></div>
+                <div className={`${styles.paymentSummary} ${styles.comparisonSummary}`}><p>{comparison.delta.monthlyPayment <= 0 ? 'Monthly repayment reduction' : 'Monthly repayment increase'}</p><strong>{money(Math.abs(comparison.delta.monthlyPayment))}<span>/ month</span></strong><p>{buildComparisonDescription(comparison)}</p></div>
                 <div className={styles.tableWrap}><table className={styles.comparisonTable}><caption className={styles.srOnly}>{comparisonTitles[comparison.scenarioType]}: {comparison.original.label} versus {comparison.scenario.label}</caption><thead><tr><th scope="col">The detail</th><th scope="col">{comparison.original.label}</th><th scope="col">{comparison.scenario.label}</th></tr></thead><tbody>{[
                   ['Offer price', money(comparison.originalInputs.price), money(comparison.scenarioInputs.price)],
                   ['Deposit', money(comparison.originalInputs.deposit), money(comparison.scenarioInputs.deposit)],
