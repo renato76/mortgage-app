@@ -231,17 +231,63 @@ export default async function handler(
       const [, type, value] = lastMessage.content.split(':')
 
       if (type === 'deposit_scenarios' && value === 'show_deposit_options') {
+        // Get original inputs to calculate savings for each option
+        interface Message {
+          role: string
+          content: string
+          originalInputs?: {
+            price: number
+            deposit: number
+            interestRate: number
+            termYears: number
+          }
+        }
+
+        const originalInputs = ([...messages] as Message[])
+          .reverse()
+          .map((m) => m.originalInputs)
+          .find(Boolean)
+
+        const depositIncreases = [10000, 15000, 20000]
+        const pounds = new Intl.NumberFormat('en-GB', {
+          style: 'currency', currency: 'GBP', maximumFractionDigits: 0,
+        })
+
+        const options = originalInputs
+          ? depositIncreases.map((increaseAmount) => {
+              const originalResults = calculateMortgageDetails(
+                originalInputs.price,
+                originalInputs.deposit,
+                originalInputs.interestRate,
+                originalInputs.termYears
+              )
+              const newDeposit = originalInputs.deposit + increaseAmount
+              const updatedResults = calculateMortgageDetails(
+                originalInputs.price,
+                newDeposit,
+                originalInputs.interestRate,
+                originalInputs.termYears
+              )
+              const monthlySavings = Math.abs(
+                updatedResults.monthlyPayment - originalResults.monthlyPayment
+              )
+              return {
+                label: `${pounds.format(increaseAmount)} (save ~${pounds.format(monthlySavings)}/mo)`,
+                value: String(increaseAmount),
+              }
+            })
+          : depositIncreases.map((increaseAmount) => ({
+              label: `${pounds.format(increaseAmount)}`,
+              value: String(increaseAmount),
+            }))
+
         return res.status(200).json({
           state: 'scenario_selection',
           message: 'Choose how much to increase your deposit by:',
           ctaPrompt: {
             question: 'Increase deposit by:',
             type: 'deposit_amount_selection',
-            options: [
-              { label: '£10,000', value: '10000' },
-              { label: '£15,000', value: '15000' },
-              { label: '£20,000', value: '20000' },
-            ],
+            options,
           },
         })
       }

@@ -103,7 +103,7 @@
 .chatChoices { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
 .chatChoices > p { font-size: 13px; font-weight: 550; line-height: 1.7; margin-bottom: 10px; }
 .chatChoiceOptions { display: flex; flex-wrap: wrap; gap: 8px; }
-.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 9px 16px; min-height: 40px; background: var(--accent); color: var(--ink); font-size: 13px; font-weight: 600; }
+.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 10px 14px; min-height: 40px; background: var(--accent); color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; white-space: normal; }
 .actionButton:hover:not(:disabled) { background: #00b98d; border-color: #00b98d; }
 .messageInput { display: block; width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; background: white; color: var(--ink); font-size: 14px; }
 .messageInput::placeholder { color: #6f7080; }
