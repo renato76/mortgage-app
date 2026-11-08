@@ -1,6 +1,6 @@
 # Mortgage Calculator
 
-A small UK mortgage calculator built with Next.js 15's Pages Router, React, and TypeScript. It provides a conventional form-based estimate and a chat interface that can gather mortgage details and calculate an estimate from a conversation.
+A conversational UK mortgage assistant built with Next.js 15's Pages Router, React, and TypeScript. Chat naturally with an AI assistant to explore mortgage scenarios, compare options, and understand your borrowing power through an intuitive multi-phase experience.
 
 ## Features
 
