@@ -157,7 +157,7 @@ function compareMortgageScenarios(
     scenarioType,
     originalInputs: inputs,
     scenarioInputs,
-    original: { label: 'Current scenario', results: originalResults },
+    original: { label: 'Initial scenario', results: originalResults },
     scenario: { label: scenarioLabel, results: scenarioResults },
     delta: {
       monthlyPayment: scenarioResults.monthlyPayment - originalResults.monthlyPayment,
@@ -175,6 +175,21 @@ function getStoredMortgageInputs(messages: unknown[]): MortgageInputs | undefine
     if (storedInputs === undefined) continue
     if (!storedInputs || typeof storedInputs !== 'object' || Array.isArray(storedInputs)) {
       throw new MortgageValidationError('The current mortgage scenario is invalid. Please calculate it again.')
+    }
+
+    return readMortgageInputs(storedInputs as Record<string, unknown>)
+  }
+  return undefined
+}
+
+function getStoredScenarioInputs(messages: unknown[]): MortgageInputs | undefined {
+  for (const message of [...messages].reverse()) {
+    if (!message || typeof message !== 'object' || !('scenarioInputs' in message)) continue
+
+    const storedInputs = (message as { scenarioInputs?: unknown }).scenarioInputs
+    if (storedInputs === undefined) continue
+    if (!storedInputs || typeof storedInputs !== 'object' || Array.isArray(storedInputs)) {
+      throw new MortgageValidationError('The current comparison scenario is invalid. Please compare it again.')
     }
 
     return readMortgageInputs(storedInputs as Record<string, unknown>)
@@ -318,7 +333,18 @@ export default async function handler(
 
     const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user')
     const hasComparisonIntent = Boolean(latestUserMessage && /\bcompare\b/i.test(latestUserMessage.content))
-    const storedInputs = hasComparisonIntent ? getStoredMortgageInputs(messages) : undefined
+    const hasScenarioChangeIntent = Boolean(
+      latestUserMessage &&
+      /\b(?:change|update|adjust|set|try|use|make|increase|decrease|reduce|raise|lower)\b/i.test(latestUserMessage.content) &&
+      /\b(?:deposit|term|rate|interest|offer|price)\b/i.test(latestUserMessage.content) &&
+      /\d/.test(latestUserMessage.content)
+    )
+    const hasScenarioContextRequest = hasComparisonIntent || hasScenarioChangeIntent
+    const storedInputs = hasScenarioContextRequest ? getStoredMortgageInputs(messages) : undefined
+    const storedScenarioInputs = hasScenarioContextRequest ? getStoredScenarioInputs(messages) : undefined
+    const forceComparisonTool = Boolean(
+      storedInputs && (hasComparisonIntent || (hasScenarioChangeIntent && storedScenarioInputs))
+    )
 
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
@@ -326,15 +352,19 @@ export default async function handler(
         {
           role: 'system',
           content:
-            'You are a UK mortgage assistant. Select exactly one tool: use extractMortgageInputs for general questions or when calculation inputs are missing or ambiguous; use calculateMortgage for a requested mortgage estimate when all inputs are known; use compareMortgageScenarios when the user asks to compare scenarios. Carry forward user-provided figures across the conversation, applying corrections and clears. Never treat assistant examples as user inputs. Expand k/K as thousands and m/M as millions for prices and deposits. Rates are annual percentages: 3.74% means 3.74. For comparisons, keep the baseline inputs unchanged and set scenarioPrice, scenarioDeposit, scenarioTermYears, and/or scenarioInterestRate to the requested new absolute values; set all unchanged scenario fields to null. A single scenario may change multiple inputs. Never invent inputs, calculate figures yourself, or claim lender approval or guaranteed rates. For general questions, use concise UK terminology and do not invent current rates.',
+            'You are a UK mortgage assistant. Select exactly one tool: use extractMortgageInputs for general questions or when calculation inputs are missing or ambiguous; use calculateMortgage for a requested mortgage estimate when all inputs are known; use compareMortgageScenarios when the user asks to compare scenarios. Carry forward user-provided figures across the conversation, applying corrections and clears. Never treat assistant examples as user inputs. Expand k/K as thousands and m/M as millions for prices and deposits. Rates are annual percentages: 3.74% means 3.74. For a first comparison, use the calculated inputs as the baseline and change only requested scenario values. For follow-up changes, preserve the original baseline and carry forward the latest alternative scenario, changing only values the user requests. A single scenario may change multiple inputs. Never invent inputs, calculate figures yourself, or claim lender approval or guaranteed rates. For general questions, use concise UK terminology and do not invent current rates.',
         },
+        ...(storedInputs && storedScenarioInputs ? [{
+          role: 'system' as const,
+          content: `The active comparison baseline is ${JSON.stringify(storedInputs)}. The current alternative scenario is ${JSON.stringify(storedScenarioInputs)}. Apply any requested change to the alternative only; preserve the baseline and all unchanged alternative values.`,
+        }] : []),
         ...messages.map((message) => ({
           role: message.role as 'user' | 'assistant',
           content: message.content as string,
         })),
       ],
       tools,
-      tool_choice: storedInputs
+      tool_choice: forceComparisonTool
         ? { type: 'function', function: { name: 'compareMortgageScenarios' } }
         : 'auto',
       parallel_tool_calls: false,
@@ -457,7 +487,7 @@ export default async function handler(
     }
 
     const inputs = storedInputs ?? readMortgageInputs(args)
-    const scenarioInputs = { ...inputs }
+    const scenarioInputs = { ...(storedScenarioInputs ?? inputs) }
     const changedFields: Array<'deposit' | 'term' | 'price' | 'rate'> = []
 
     if (args.scenarioDeposit !== null) {
@@ -465,29 +495,30 @@ export default async function handler(
         throw new MortgageValidationError('Provide a valid scenario deposit.')
       }
       scenarioInputs.deposit = args.scenarioDeposit
-      if (scenarioInputs.deposit !== inputs.deposit) changedFields.push('deposit')
     }
     if (args.scenarioTermYears !== null) {
       if (typeof args.scenarioTermYears !== 'number' || !Number.isFinite(args.scenarioTermYears)) {
         throw new MortgageValidationError('Provide a valid scenario term.')
       }
       scenarioInputs.termYears = args.scenarioTermYears
-      if (scenarioInputs.termYears !== inputs.termYears) changedFields.push('term')
     }
     if (args.scenarioPrice !== null) {
       if (typeof args.scenarioPrice !== 'number' || !Number.isFinite(args.scenarioPrice)) {
         throw new MortgageValidationError('Provide a valid scenario offer price.')
       }
       scenarioInputs.price = args.scenarioPrice
-      if (scenarioInputs.price !== inputs.price) changedFields.push('price')
     }
     if (args.scenarioInterestRate !== null) {
       if (typeof args.scenarioInterestRate !== 'number' || !Number.isFinite(args.scenarioInterestRate)) {
         throw new MortgageValidationError('Provide a valid scenario interest rate.')
       }
       scenarioInputs.interestRate = args.scenarioInterestRate
-      if (scenarioInputs.interestRate !== inputs.interestRate) changedFields.push('rate')
     }
+
+    if (scenarioInputs.deposit !== inputs.deposit) changedFields.push('deposit')
+    if (scenarioInputs.termYears !== inputs.termYears) changedFields.push('term')
+    if (scenarioInputs.price !== inputs.price) changedFields.push('price')
+    if (scenarioInputs.interestRate !== inputs.interestRate) changedFields.push('rate')
 
     if (changedFields.length === 0) {
       throw new MortgageValidationError('Choose at least one mortgage value to change.')

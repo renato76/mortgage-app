@@ -211,6 +211,76 @@ test('routes “compare with 25 years” to a term comparison and preserves the 
   }))
 })
 
+test('applies follow-up changes to the latest alternative and keeps the original baseline', async () => {
+  const baseline = { price: 430000, deposit: 100000, interestRate: 3.74, termYears: 23 }
+  const firstScenario = { ...baseline, deposit: 120000, termYears: 25 }
+  const rateScenario = { ...firstScenario, interestRate: 4.2 }
+  const finalScenario = { ...rateScenario, termYears: 20 }
+
+  createCompletion
+    .mockResolvedValueOnce(toolResponse({
+      ...baseline,
+      scenarioDeposit: 120000,
+      scenarioTermYears: 25,
+      scenarioPrice: null,
+      scenarioInterestRate: null,
+    }, 'compareMortgageScenarios'))
+    .mockResolvedValueOnce(toolResponse({
+      ...firstScenario,
+      scenarioDeposit: null,
+      scenarioTermYears: null,
+      scenarioPrice: null,
+      scenarioInterestRate: 4.2,
+    }, 'compareMortgageScenarios'))
+    .mockResolvedValueOnce(toolResponse({
+      ...rateScenario,
+      scenarioDeposit: null,
+      scenarioTermYears: 20,
+      scenarioPrice: null,
+      scenarioInterestRate: null,
+    }, 'compareMortgageScenarios'))
+
+  const firstResponse = await request({ messages: [{
+    role: 'user',
+    content: 'compare with 120K deposit and 25 years',
+    originalInputs: baseline,
+  }] })
+  const rateResponse = await request({ messages: [
+    { role: 'user', content: 'compare with 120K deposit and 25 years', originalInputs: baseline },
+    { role: 'assistant', content: 'Compared your current mortgage with £120k deposit · 25y.' },
+    { role: 'user', content: 'change rate to 4.2%', originalInputs: baseline, scenarioInputs: firstScenario },
+  ] })
+  const termResponse = await request({ messages: [
+    { role: 'user', content: 'compare with 120K deposit and 25 years', originalInputs: baseline },
+    { role: 'assistant', content: String(firstResponse.body?.message) },
+    { role: 'user', content: 'change rate to 4.2%', originalInputs: baseline, scenarioInputs: firstScenario },
+    { role: 'assistant', content: String(rateResponse.body?.message) },
+    { role: 'user', content: 'change term to 20 years', originalInputs: baseline, scenarioInputs: rateScenario },
+  ] })
+
+  expect(firstResponse.status).toBe(200)
+  expect(rateResponse.status).toBe(200)
+  expect(termResponse.status).toBe(200)
+  expect(rateResponse.body).toMatchObject({ comparison: {
+    originalInputs: baseline,
+    scenarioInputs: rateScenario,
+  } })
+  expect(termResponse.body).toMatchObject({ comparison: {
+    scenarioType: 'multiple',
+    originalInputs: baseline,
+    scenarioInputs: finalScenario,
+    original: { results: calculateMortgageDetails(430000, 100000, 3.74, 23) },
+    scenario: { results: calculateMortgageDetails(430000, 120000, 4.2, 20) },
+  } })
+  expect(createCompletion).toHaveBeenLastCalledWith(expect.objectContaining({
+    tool_choice: { type: 'function', function: { name: 'compareMortgageScenarios' } },
+    messages: expect.arrayContaining([expect.objectContaining({
+      role: 'system',
+      content: expect.stringContaining(JSON.stringify(rateScenario)),
+    })]),
+  }))
+})
+
 test('keeps the calculated baseline while comparing a new deposit and term together', async () => {
   const baseline = { price: 430000, deposit: 100000, interestRate: 3.74, termYears: 23 }
   const scenarioInputs = { ...baseline, deposit: 120000, termYears: 25, interestRate: 4.2 }

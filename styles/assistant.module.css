@@ -17,8 +17,6 @@
   min-height: 100vh;
   color: var(--ink);
   background: #f6f7f9;
-  background-image: linear-gradient(90deg, transparent calc(100% - 1px), #eceef3 1px);
-  background-size: 112px 100%;
   font-family: 'Assistant Geist', 'Helvetica Neue', sans-serif;
   letter-spacing: 0;
 }
@@ -43,7 +41,7 @@
 .eyebrow { font-size: 10px; font-weight: 650; line-height: 1.6; color: var(--muted); }
 .pageHeading h1 { font-size: 30px; font-weight: 550; line-height: 1.3; margin-top: 9px; }
 .estimateBadge { font-size: 11px; color: var(--accent-ink); padding: 7px 10px; background: var(--accent-soft); border-radius: 4px; white-space: nowrap; }
-.workspace { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; gap: 38px; }
+.workspace { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; gap: 38px; }
 .conversationSection { min-width: 0; }
 .results { min-width: 0; padding: 23px 0 24px; border-top: 1px solid var(--line); }
 .resultsHeader { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 25px; }
@@ -58,6 +56,10 @@
 .paymentSummary > strong { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 36px; font-weight: 550; color: var(--ink); line-height: 1.4; margin-top: 5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .paymentSummary strong > span { font-size: 11px; color: var(--muted); font-weight: 400; }
 .paymentSummary > p:last-child { font-size: 11px; color: var(--accent-ink); line-height: 1.7; margin-top: 6px; }
+.results .comparisonSummary > p:first-child { font-size: 16px; color: var(--ink); }
+.results .comparisonSummary > strong { gap: 7px; font-size: 27px; line-height: 1.3; }
+.results .comparisonSummary > strong > span { font-size: 13px; }
+.results .comparisonSummary > p:last-child { font-size: 14px; line-height: 1.6; margin-top: 10px; }
 .breakdown { margin: 0; }
 .breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
 .breakdown dt { color: var(--muted); }
@@ -89,6 +91,8 @@
 .comparisonTable th:first-child { text-align: left; padding-left: 0; font-weight: 500; }
 .comparisonTable td { white-space: nowrap; font-weight: 550; }
 .comparisonTable td:last-child, .comparisonTable thead th:last-child { background: var(--accent-soft); color: var(--ink); }
+.comparisonTable .monthlyRepaymentRow th, .comparisonTable .monthlyRepaymentRow td { background: var(--accent-soft); font-size: 12px; font-weight: 700; }
+.comparisonTable .monthlyRepaymentRow td:last-child { background: #c9f1e4; }
 .chatbot { padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); }
 .chatbotTitle { font-size: 16px; font-weight: 650; margin-bottom: 14px; }
 .chatLog { height: 390px; overflow-y: auto; overscroll-behavior: contain; background: #f8f9fb; border: 1px solid var(--line); padding: 14px; margin-bottom: 12px; }
@@ -108,7 +112,7 @@
 .footer > span { font-size: 11px; font-weight: 600; }
 .footer p { font-size: 10px; color: var(--muted); line-height: 1.7; }
 @media (max-width: 1000px) {
-  .workspace { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 26px; }
+  .workspace { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 26px; }
   .paymentSummary > strong { font-size: 30px; }
 }
 @media (max-width: 760px) {

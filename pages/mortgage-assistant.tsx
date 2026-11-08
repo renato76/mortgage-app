@@ -94,7 +94,7 @@ const MortgageAssistant = () => {
             {comparison && resultsView === 'compare' ? (
               <>
                 <div className={styles.comparisonTitle}><h2>{comparisonTitles[comparison.scenarioType]}</h2></div>
-                <div className={styles.paymentSummary}><p>{comparison.delta.monthlyPayment <= 0 ? 'Monthly repayment reduction' : 'Monthly repayment increase'}</p><strong>{money(Math.abs(comparison.delta.monthlyPayment))}<span>/ month</span></strong><p>{money(Math.abs(comparison.delta.totalInterest))} {comparison.delta.totalInterest <= 0 ? 'less' : 'more'} interest over the term</p></div>
+                <div className={`${styles.paymentSummary} ${styles.comparisonSummary}`}><p>{comparison.delta.monthlyPayment <= 0 ? 'Monthly repayment reduction' : 'Monthly repayment increase'}</p><strong>{money(Math.abs(comparison.delta.monthlyPayment))}<span>/ month</span></strong><p>{money(Math.abs(comparison.delta.totalInterest))} {comparison.delta.totalInterest <= 0 ? 'less' : 'more'} interest over the term</p></div>
                 <div className={styles.tableWrap}><table className={styles.comparisonTable}><caption className={styles.srOnly}>{comparisonTitles[comparison.scenarioType]}: {comparison.original.label} versus {comparison.scenario.label}</caption><thead><tr><th scope="col">The detail</th><th scope="col">{comparison.original.label}</th><th scope="col">{comparison.scenario.label}</th></tr></thead><tbody>{[
                   ['Offer price', money(comparison.originalInputs.price), money(comparison.scenarioInputs.price)],
                   ['Deposit', money(comparison.originalInputs.deposit), money(comparison.scenarioInputs.deposit)],
@@ -104,7 +104,7 @@ const MortgageAssistant = () => {
                   ['Monthly repayment', money(comparison.original.results.monthlyPayment), money(comparison.scenario.results.monthlyPayment)],
                   ['Total interest', money(comparison.original.results.interestPaid), money(comparison.scenario.results.interestPaid)],
                   ['Total repayments', money(comparison.original.results.totalCost), money(comparison.scenario.results.totalCost)],
-                ].map(([label, original, scenario]) => <tr key={label}><th scope="row">{label}</th><td>{original}</td><td>{scenario}</td></tr>)}</tbody></table></div>
+                ].map(([label, original, scenario]) => <tr key={label} className={label === 'Monthly repayment' ? styles.monthlyRepaymentRow : undefined}><th scope="row">{label}</th><td>{original}</td><td>{scenario}</td></tr>)}</tbody></table></div>
                 <p className={styles.disclaimer}>{comparisonNotes[comparison.scenarioType]}</p>
               </>
             ) : chatbotResults ? (

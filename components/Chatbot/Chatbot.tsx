@@ -12,6 +12,7 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   originalInputs?: MortgageInputs
+  scenarioInputs?: MortgageInputs
 }
 
 export interface ChatbotMortgageResults {
@@ -71,6 +72,10 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
 
   // Store last known mortgage inputs
   const [lastInputs, setLastInputs] = useState<MortgageInputs | null>(null)
+  const [comparisonContext, setComparisonContext] = useState<{
+    originalInputs: MortgageInputs
+    scenarioInputs: MortgageInputs
+  } | null>(null)
 
   const submitMessages = async (newMessages: ChatMessage[]) => {
     if (requestInFlight.current) return
@@ -117,10 +122,15 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
       if (data.mortgageResults && data.state === 'complete') {
         setChatbotResults(data.mortgageResults, data.originalInputs)
         setLastInputs(data.originalInputs || null)
+        setComparisonContext(null)
       }
 
       if (data.comparison) {
         setComparison(data.comparison)
+        setComparisonContext({
+          originalInputs: data.comparison.originalInputs,
+          scenarioInputs: data.comparison.scenarioInputs,
+        })
       }
 
       if (data.ctaPrompt) {
@@ -144,9 +154,14 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
     const messageToSend = userInput ?? input
     if (!messageToSend.trim()) return
 
-    const currentInputs = extra || lastInputs
+    const currentInputs = extra || comparisonContext?.originalInputs || lastInputs
     const messageObj: ChatMessage = currentInputs
-      ? { role: 'user', content: messageToSend, originalInputs: currentInputs }
+      ? {
+          role: 'user',
+          content: messageToSend,
+          originalInputs: currentInputs,
+          ...(comparisonContext && { scenarioInputs: comparisonContext.scenarioInputs }),
+        }
       : { role: 'user', content: messageToSend }
 
     setInput('')
