@@ -317,6 +317,18 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
             </div>
           ))}
 
+        {/* Loading indicator */}
+        {loading && (
+          <div className={styles.loadingIndicator} role="status" aria-label="Bot is thinking">
+            <div className={styles.loadingDots}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p className={styles.loadingText}>Bot is thinking...</p>
+          </div>
+        )}
+
         {/* Render CTA buttons */}
         {ctaPrompt && (
           <div className={styles.chatChoices}>
