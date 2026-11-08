@@ -339,20 +339,24 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
                 msg.role === 'user' ? styles.userMessage : ''
               }`}
             >
-              <strong>{msg.role === 'user' ? 'You' : 'Bot'}:</strong>{' '}
-              {msg.content}
+              <div className={styles.messageAvatar}>
+                {msg.role === 'user' ? 'You' : 'A'}
+              </div>
+              <div className={styles.messageBubble}>
+                {msg.content}
+              </div>
             </div>
           ))}
 
         {/* Loading indicator */}
         {loading && (
-          <div className={styles.loadingIndicator} role="status" aria-label="Bot is thinking">
+          <div className={styles.loadingIndicator} role="status" aria-label="Assistant is thinking">
             <div className={styles.loadingDots}>
               <span></span>
               <span></span>
               <span></span>
             </div>
-            <p className={styles.loadingText}>Bot is thinking...</p>
+            <p className={styles.loadingText}>Assistant is thinking...</p>
           </div>
         )}
 

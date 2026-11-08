@@ -104,18 +104,20 @@ const MortgageAssistant = () => {
         </div>
       </header>
       <main className={styles.main}>
-        <div className={styles.pageHeading}><div><p className={styles.eyebrow}>YOUR HOME. YOUR NUMBERS.</p><h1>A clearer view of your mortgage.</h1></div><span className={styles.estimateBadge}>Repayment estimates</span></div>
+        <div className={styles.pageHeading}><div><p className={styles.eyebrow}>YOUR HOME. YOUR NUMBERS.</p><h1>A clearer view of your mortgage.</h1></div></div>
         <div className={styles.workspace}>
           <section id="conversation" className={styles.conversationSection} aria-label="Mortgage conversation">
             <Chatbot setChatbotResults={handleCalculation} setComparison={handleComparison} />
           </section>
           {(chatbotResults || comparison) && (
             <aside className={styles.results} aria-label="Mortgage results" aria-live="polite">
-              <div className={styles.resultsHeader}><div><span className={styles.eyebrow}>{resultsView === 'compare' && comparison ? 'YOUR OPTIONS' : 'YOUR ESTIMATE'}</span><span className={styles.resultState}>Calculated</span></div><button type="button" onClick={() => { setChatbotResults(null); setComparison(null); }} className={styles.resetButton} title="Clear results">Reset</button></div>
             {comparison && (
-              <div className={styles.resultTabs} role="group" aria-label="Results view">
-                <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'estimate'} onClick={() => setResultsView('estimate')}>Estimate</button>
-                <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'compare'} onClick={() => setResultsView('compare')}>Compare</button>
+              <div className={styles.resultTabsContainer}>
+                <div className={styles.resultTabs} role="group" aria-label="Results view">
+                  <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'estimate'} onClick={() => setResultsView('estimate')}>Estimate</button>
+                  <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'compare'} onClick={() => setResultsView('compare')}>Compare</button>
+                </div>
+                <button type="button" onClick={() => { setChatbotResults(null); setComparison(null); }} className={styles.resetButton} title="Clear results">Reset</button>
               </div>
             )}
             {comparison && resultsView === 'compare' ? (
