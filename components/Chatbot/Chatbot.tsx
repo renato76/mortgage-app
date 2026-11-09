@@ -73,7 +73,7 @@ const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotPro
   const [errorType, setErrorType] = useState<'transient' | 'permanent' | null>(null)
   
   // Input collection state
-  const [inputStage, setInputStage] = useState<'welcome' | 'price' | 'deposit' | 'term' | 'rate' | 'complete'>('welcome')
+  const [inputStage, setInputStage] = useState<'welcome' | 'price' | 'deposit' | 'term' | 'rate' | 'complete' | 'comparison_prompt'>('welcome')
   const [collectedInputs, setCollectedInputs] = useState<Partial<MortgageInputs>>({})
   
   const requestInFlight = useRef(false)
@@ -307,7 +307,23 @@ useEffect(() => {
         // Clear any previous CTAs
         setCtaPrompt(null)
       } else if (data.ctaPrompt) {
-        setCtaPrompt(data.ctaPrompt)
+        // Skip scenario_comparison CTA - show suggestions directly instead
+        if (data.ctaPrompt.type === 'scenario_comparison') {
+          setInputStage('comparison_prompt')
+          setMessages(prev => [...prev, 
+            {
+              role: 'assistant',
+              content: 'Would you like to compare this with another scenario?'
+            },
+            {
+              role: 'assistant',
+              content: 'Try a different rate, term or deposit. Here are some examples:\n\n• 5% interest rate and 25 year term\n• What if I increase deposit by £10k?\n• 4.5% interest and £10k extra deposit'
+            }
+          ])
+          setCtaPrompt(null)
+        } else {
+          setCtaPrompt(data.ctaPrompt)
+        }
       }
 
       // Clear retry state on success
@@ -534,7 +550,7 @@ useEffect(() => {
           disabled={loading}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : "Ask about mortgages..."}
+          placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : inputStage === 'comparison_prompt' ? "Try a different scenario..." : "Ask about mortgages..."}
           className={styles.messageInput}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
         />

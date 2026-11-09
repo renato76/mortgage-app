@@ -64,10 +64,10 @@
 .resultState::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink); }
 .resultTabsContainer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
 .resultTabs { display: inline-flex; gap: 2px; padding: 4px; margin: 0; border: none; border-radius: 6px; background: #f0f1f5; }
-.resultTab { min-height: 36px; padding: 8px 16px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s ease-in-out; }
+.resultTab { min-height: 36px; padding: 8px 16px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s ease-in-out; }
 .resultTab[aria-pressed='true'] { color: var(--ink); border-bottom-color: transparent; background: white; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
 .resultTab[aria-pressed='false']:hover { color: var(--ink); }
-.results h2 { font-size: 23px; font-weight: 500; line-height: 1.35; margin: 0 0 22px; }
+.results h2 { font-size: 18px; font-weight: 500; line-height: 1.35; margin: 0 0 22px; }
 .paymentSummary { padding: 4px 0 20px; border: 0; border-bottom: 1px solid var(--line); background: transparent; margin-bottom: 20px; }
 .paymentSummary > p:first-child, .emptyPayment > p { font-size: 12px; color: var(--muted); }
 .paymentSummary > strong { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 36px; font-weight: 550; color: var(--ink); line-height: 1.4; margin-top: 5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -80,11 +80,11 @@
 .comparisonCards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
 .comparisonCard { padding: 24px; border-radius: 16px; }
 .comparisonCard.cardSavings { background-color: var(--accent-soft); }
-.comparisonCard.cardAdditional { background-color: #fdf3eb; }
+.comparisonCard.cardAdditional { background-color: #eeeeee; }
 .comparisonCardLabel { font-size: 14px; color: var(--muted); margin: 0 0 8px 0; font-weight: 500; }
 .comparisonCardAmount { display: block; font-size: 28px; font-weight: 600; color: var(--ink); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .comparisonCard.cardSavings .comparisonCardAmount { color: #1e7a66; }
-.comparisonCard.cardAdditional .comparisonCardAmount { color: #8b6f47; }
+.comparisonCard.cardAdditional .comparisonCardAmount { color: #555555; }
 .comparisonCardSubtext { font-size: 13px; color: var(--muted); margin: 0; }
 .breakdown { margin: 0; }
 .breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
@@ -120,7 +120,7 @@
 .highlightFavorable th, .highlightFavorable td { background: white; font-size: 13px; font-weight: 700; }
 .highlightFavorable td:last-child { background: #d0eae4; }
 .highlightUnfavorable th, .highlightUnfavorable td { background: white; font-size: 13px; font-weight: 700; }
-.highlightUnfavorable td:last-child { background: #fce5d8; }
+.highlightUnfavorable td:last-child { background: #eeeeee; }
 .chatbot { padding: 18px; background: white; color: var(--ink); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border-radius: 8px; }
 .chatbotHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
 .chatbotTitle { font-size: 16px; font-weight: 650; margin: 0 0 12px 0; }
