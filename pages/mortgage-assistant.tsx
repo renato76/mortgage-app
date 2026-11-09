@@ -78,6 +78,7 @@ const MortgageAssistant = () => {
   const [comparison, setComparison] = useState<MortgageComparison | null>(null)
   const [resultsView, setResultsView] = useState<'estimate' | 'compare'>('estimate')
   const [inputs, setInputs] = useState<MortgageInputs | null>(null)
+  const [resetKey, setResetKey] = useState(0)
 
   const handleCalculation = (results: ChatbotMortgageResults, originalInputs?: MortgageInputs) => {
     setChatbotResults(results)
@@ -89,6 +90,13 @@ const MortgageAssistant = () => {
   const handleComparison = (nextComparison: MortgageComparison) => {
     setComparison(nextComparison)
     setResultsView('compare')
+  }
+
+  const handleReset = () => {
+    setChatbotResults(null)
+    setComparison(null)
+    setResultsView('estimate')
+    setResetKey(k => k + 1)
   }
 
   return (
@@ -105,7 +113,7 @@ const MortgageAssistant = () => {
         <div className={styles.pageHeading}><div><p className={styles.eyebrow}>YOUR HOME. YOUR NUMBERS.</p><h1>A clearer view of your mortgage.</h1></div></div>
         <div className={styles.workspace}>
           <section id="conversation" className={styles.conversationSection} aria-label="Mortgage conversation">
-            <Chatbot setChatbotResults={handleCalculation} setComparison={handleComparison} />
+            <Chatbot key={resetKey} setChatbotResults={handleCalculation} setComparison={handleComparison} />
           </section>
           {(chatbotResults || comparison) && (
             <aside className={styles.results} aria-label="Mortgage results" aria-live="polite">
@@ -115,7 +123,7 @@ const MortgageAssistant = () => {
                   <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'estimate'} onClick={() => setResultsView('estimate')}>Estimate</button>
                   <button type="button" className={styles.resultTab} aria-pressed={resultsView === 'compare'} onClick={() => setResultsView('compare')}>Compare</button>
                 </div>
-                <button type="button" onClick={() => { setChatbotResults(null); setComparison(null); }} className={styles.resetButton} title="Clear results">Reset</button>
+                <button type="button" onClick={handleReset} className={styles.resetButton} title="Clear results">Reset</button>
               </div>
             )}
             {comparison && resultsView === 'compare' ? (
