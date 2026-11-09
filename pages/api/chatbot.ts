@@ -227,156 +227,6 @@ export default async function handler(
     // HANDLE CTA SELECTIONS FIRST (before calling OpenAI)
     const lastMessage = messages[messages.length - 1]
 
-    if (lastMessage.content.startsWith('CTA_SELECTION:')) {
-      const [, type, value] = lastMessage.content.split(':')
-
-      if (type === 'deposit_scenarios' && value === 'show_deposit_options') {
-        // Get original inputs to calculate savings for each option
-        interface Message {
-          role: string
-          content: string
-          originalInputs?: {
-            price: number
-            deposit: number
-            interestRate: number
-            termYears: number
-          }
-        }
-
-        const originalInputs = ([...messages] as Message[])
-          .reverse()
-          .map((m) => m.originalInputs)
-          .find(Boolean)
-
-        const depositIncreases = [10000, 15000, 20000]
-        const pounds = new Intl.NumberFormat('en-GB', {
-          style: 'currency', currency: 'GBP', maximumFractionDigits: 0,
-        })
-
-        const options = originalInputs
-          ? depositIncreases.map((increaseAmount) => {
-              const originalResults = calculateMortgageDetails(
-                originalInputs.price,
-                originalInputs.deposit,
-                originalInputs.interestRate,
-                originalInputs.termYears
-              )
-              const newDeposit = originalInputs.deposit + increaseAmount
-              const updatedResults = calculateMortgageDetails(
-                originalInputs.price,
-                newDeposit,
-                originalInputs.interestRate,
-                originalInputs.termYears
-              )
-              const monthlySavings = Math.abs(
-                updatedResults.monthlyPayment - originalResults.monthlyPayment
-              )
-              return {
-                label: `${pounds.format(increaseAmount)} (save ~${pounds.format(monthlySavings)}/mo)`,
-                value: String(increaseAmount),
-              }
-            })
-          : depositIncreases.map((increaseAmount) => ({
-              label: `${pounds.format(increaseAmount)}`,
-              value: String(increaseAmount),
-            }))
-
-        return res.status(200).json({
-          state: 'scenario_selection',
-          message: 'Choose how much to increase your deposit by:',
-          ctaPrompt: {
-            question: 'Increase deposit by:',
-            type: 'deposit_amount_selection',
-            options,
-          },
-        })
-      }
-
-      if (type === 'deposit_amount_selection') {
-        if (!['10000', '15000', '20000'].includes(value)) {
-          throw new MortgageValidationError('Choose a valid deposit increase.')
-        }
-        const increaseAmount = Number(value)
-
-        interface Message {
-          role: string
-          content: string
-          originalInputs?: {
-            price: number
-            deposit: number
-            interestRate: number
-            termYears: number
-          }
-        }
-
-        const originalInputs = ([...messages] as Message[])
-          .reverse()
-          .map((m) => m.originalInputs)
-          .find(Boolean)
-
-        if (!originalInputs) {
-          return res.status(400).json({
-            error: 'Missing original mortgage inputs',
-          })
-        }
-
-        const { price, deposit, interestRate, termYears } = originalInputs
-
-        // Original calculation
-        const originalResults = calculateMortgageDetails(
-          price,
-          deposit,
-          interestRate,
-          termYears
-        )
-
-        // Updated calculation
-        const newDeposit = deposit + increaseAmount
-
-        const updatedResults = calculateMortgageDetails(
-          price,
-          newDeposit,
-          interestRate,
-          termYears
-        )
-
-        const delta = {
-          monthlyPayment: updatedResults.monthlyPayment - originalResults.monthlyPayment,
-          totalInterest: updatedResults.interestPaid - originalResults.interestPaid,
-          totalCost: updatedResults.totalCost - originalResults.totalCost,
-        }
-        const pounds = new Intl.NumberFormat('en-GB', {
-          style: 'currency', currency: 'GBP', maximumFractionDigits: 0,
-        })
-        const interestExplanation = interestRate === 0
-          ? 'At 0% interest, there is no mortgage interest to save.'
-          : `Over the ${termYears}-year term, you would also save approximately ${pounds.format(-delta.totalInterest)} in interest, assuming the rate stays at ${interestRate}%.`
-        const cashExplanation = updatedResults.fundingType === 'cash'
-          ? ' Your increased deposit covers the full property price, so you would no longer need a mortgage.'
-          : ''
-
-        return res.status(200).json({
-          state: 'complete',
-          message: `You would borrow ${pounds.format(increaseAmount)} less, reducing your monthly repayments by approximately ${pounds.format(-delta.monthlyPayment)}. ${interestExplanation} You would need ${pounds.format(increaseAmount)} more cash upfront.${cashExplanation}`,
-          comparison: {
-            originalPrice: originalInputs.price,
-            scenarioType: 'deposit',
-            originalInputs: { price, deposit, interestRate, termYears },
-            scenarioInputs: { price, deposit: newDeposit, interestRate, termYears },
-            original: {
-              label: 'Current deposit',
-              results: originalResults,
-            },
-            scenario: {
-              label: `Deposit + £${increaseAmount.toLocaleString()}`,
-              results: updatedResults,
-            },
-            delta,
-          },
-        })
-      }
-    }
-
     const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user')
     const hasComparisonIntent = Boolean(latestUserMessage && /\bcompare\b/i.test(latestUserMessage.content))
     const hasScenarioChangeIntent = Boolean(
@@ -391,19 +241,6 @@ export default async function handler(
     const forceComparisonTool = Boolean(
       storedInputs && (hasComparisonIntent || (hasScenarioChangeIntent && storedScenarioInputs))
     )
-
-    // If user asks for comparison/scenario change but no baseline exists, guide them to calculate first
-    if ((hasComparisonIntent || hasScenarioChangeIntent) && !storedInputs) {
-      return res.status(200).json({
-        state: 'collecting',
-        message: 'To compare scenarios, I first need to calculate a baseline. Please provide:\n\n' +
-          '• Property price (£)\n' +
-          '• Deposit amount (£)\n' +
-          '• Annual interest rate (%)\n' +
-          '• Mortgage term (years)\n\n' +
-          'For example: "Calculate figures for a £300k property, £50k deposit, 4.5% rate, 25 year term"',
-      })
-    }
 
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
@@ -474,19 +311,6 @@ export default async function handler(
 
       if (args.answer !== null) {
         throw new MortgageValidationError('Provide valid mortgage inputs.')
-      }
-
-      const missing = fields.filter((field) => args[field] === null &&
-        !(args.price !== null && args.price === args.deposit &&
-          (field === 'interestRate' || field === 'termYears')))
-      if (missing.length) {
-        const questions = {
-          price: 'What is the property price (£)?',
-          deposit: 'How much is your deposit (£)?',
-          interestRate: 'What annual interest rate (%) should I use?',
-          termYears: 'What mortgage term should I use, in whole years?',
-        }
-        return res.status(200).json({ state: 'collecting', message: questions[missing[0]] })
       }
 
       if (args.price === args.deposit) {
@@ -592,12 +416,6 @@ export default async function handler(
     ]
     const scenarioLabel = scenarioLabelParts.join(' · ')
     
-    const originalResults = calculateMortgageDetails(
-      inputs.price,
-      inputs.deposit,
-      inputs.interestRate,
-      inputs.termYears
-    )
     const comparison = compareMortgageScenarios(inputs, scenarioInputs, scenarioType, scenarioLabel)
     
     // Build detailed comparison message
