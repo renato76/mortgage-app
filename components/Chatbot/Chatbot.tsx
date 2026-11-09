@@ -48,6 +48,7 @@ export interface MortgageComparison {
 interface ChatbotProps {
   setChatbotResults: (results: ChatbotMortgageResults, originalInputs?: MortgageInputs) => void
   setComparison: (comparison: MortgageComparison) => void
+  initialInputs?: MortgageInputs | null
 }
 
 interface CtaPromptOption {
@@ -61,7 +62,7 @@ interface CtaPrompt {
   options: CtaPromptOption[]
 }
 
-const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
+const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -70,7 +71,6 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   const [failedMessages, setFailedMessages] = useState<ChatMessage[] | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [errorType, setErrorType] = useState<'transient' | 'permanent' | null>(null)
-  const [showComparisonHint, setShowComparisonHint] = useState(false)
   const requestInFlight = useRef(false)
   const chatLogRef = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -83,6 +83,54 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
     originalInputs: MortgageInputs
     scenarioInputs: MortgageInputs
   } | null>(null)
+
+  const welcomeMessage = `Welcome to your Mortgage Assistant
+
+I can help you explore different mortgage scenarios.
+
+To get started, enter these four details in the calculator:
+
+• Property price
+• Deposit
+• Mortgage term
+• Interest rate
+
+`;
+
+useEffect(() => {
+  if (!initialInputs && messages.length === 0) {
+    setMessages([
+      {
+        role: 'assistant',
+        content: welcomeMessage,
+      },
+    ]);
+  }
+}, []);
+
+  // Show real example questions when inputs are provided
+  useEffect(() => {
+    if (initialInputs && !ctaPrompt) {
+      setLastInputs(initialInputs)
+      setComparisonContext({ originalInputs: initialInputs, scenarioInputs: initialInputs })
+      
+      const depositQuestion = `What if I increase my deposit to £${initialInputs.deposit + 30000}?`
+      const rateQuestion = `What if the interest rate was ${initialInputs.interestRate + 1}%?`
+      const termQuestion = `What if I chose a ${initialInputs.termYears - 5} year term instead?`
+      const priceQuestion = `What if the property price was £${initialInputs.price + 50000}?`
+      
+      setCtaPrompt({
+        question: 'Example questions you can ask:',
+        type: 'initial_suggestions',
+        options: [
+          { label: depositQuestion, value: depositQuestion },
+          { label: rateQuestion, value: rateQuestion },
+          { label: termQuestion, value: termQuestion },
+          { label: priceQuestion, value: priceQuestion }
+        ]
+      })
+    }
+  }, [initialInputs?.price, initialInputs?.deposit, initialInputs?.interestRate, initialInputs?.termYears, ctaPrompt])
 
   // Auto-scroll chat log to bottom when messages or CTA changes
   useEffect(() => {
@@ -250,9 +298,10 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
           originalInputs: data.comparison.originalInputs,
           scenarioInputs: data.comparison.scenarioInputs,
         })
-      }
-
-      if (data.ctaPrompt) {
+        
+        // Clear any previous CTAs
+        setCtaPrompt(null)
+      } else if (data.ctaPrompt) {
         setCtaPrompt(data.ctaPrompt)
       }
 
@@ -296,16 +345,19 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
   const handleCtaSelection = (value: string) => {
     if (!value || !ctaPrompt) return
     
-    // If they want to compare scenarios, focus input and set helpful placeholder
+    // If they want to compare scenarios, show helpful suggestions
     if (ctaPrompt.type === 'scenario_comparison' && value === 'compare_scenarios') {
       setInput('')
-      setShowComparisonHint(true)
-      // Focus the input field and let them type their comparison question
-      setTimeout(() => {
-        messageInputRef.current?.focus()
-      }, 100)
-      // Clear the CTA prompt so they see the input field
+      
+      // Add a bot message with example questions as text
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Try a different rate, term or deposit. Here are some examples:\n\n• Compare 25 vs 30 year term\n• Try 5% interest rate\n• What if I increase deposit by £10k?'
+      }])
+      
+      // Clear CTA so input field is visible
       setCtaPrompt(null)
+      
       return
     }
     
@@ -410,13 +462,8 @@ const Chatbot = ({ setChatbotResults, setComparison }: ChatbotProps) => {
         aria-label="Message"
         disabled={loading}
         value={input}
-        onChange={(e) => {
-          setInput(e.target.value)
-          if (e.target.value) setShowComparisonHint(false)
-        }}
-        placeholder={showComparisonHint 
-          ? "e.g., Compare 25 vs 30 year, or Try 5% interest rate, or What if I saved £10k more?"
-          : "Ask about mortgages..."}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Ask about mortgages..."
         className={styles.messageInput}
         onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
       />

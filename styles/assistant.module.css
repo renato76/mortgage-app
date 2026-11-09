@@ -42,7 +42,21 @@
 .pageHeading h1 { font-size: 30px; font-weight: 550; line-height: 1.3; margin-top: 9px; }
 .estimateBadge { font-size: 11px; color: var(--accent-ink); padding: 7px 10px; background: var(--accent-soft); border-radius: 4px; white-space: nowrap; }
 .workspace { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); align-items: start; gap: 38px; }
-.conversationSection { min-width: 0; }
+.quickCalcSection { grid-area: calc; display: flex; flex-direction: column; gap: 20px; }
+.quickCalcSection h2 { font-size: 20px; font-weight: 600; margin: 0 0 16px; color: var(--ink); }
+.quickCalcGrid2x2 { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 12px; }
+.quickCalcGrid2x2 > div { display: flex; flex-direction: column; gap: 6px; }
+.quickCalcGrid2x2 label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.quickCalcGrid2x2 input { border: 1px solid var(--line); border-radius: 6px; padding: 11px 12px; font-size: 14px; background: white; color: var(--ink); transition: all 0.15s ease-in-out; box-sizing: border-box; width: 100%; }
+.quickCalcGrid2x2 input::placeholder { color: #b0b4c1; }
+.quickCalcGrid2x2 input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 201, 154, 0.1); }
+.quickCalcGrid2x2 input:disabled { background: #f0f1f5; color: #9093a1; opacity: 0.6; }
+.quickCalcError { font-size: 13px; color: #8b3434; padding: 10px 12px; background: #fef3f3; border: 1px solid #e8a8a8; border-radius: 4px; }
+.quickCalcButton { width: 100%; padding: 13px 16px; background: var(--accent); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s ease-in-out; min-height: 48px; }
+.quickCalcButton:hover:not(:disabled) { background: #00b98d; }
+.quickCalcButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.quickCalcButton:active:not(:disabled) { transform: scale(0.98); }
+.quickCalcButton:disabled { opacity: 0.6; cursor: not-allowed; }
 .results { min-width: 0; padding: 0 0 24px; position: relative; }
 .resultsTopBar { display: flex; justify-content: flex-end; align-items: center; padding: 12px 0 20px; margin-bottom: 11px; }
 .resultsHeader { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 25px; }
@@ -107,7 +121,7 @@
 .messageAvatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
 .message.userMessage .messageAvatar { background: var(--accent); color: white; order: 2; }
 .message:not(.userMessage) .messageAvatar { background: #e8eef6; color: var(--accent-ink); order: 1; }
-.messageBubble { display: flex; flex-direction: column; max-width: 85%; padding: 12px 14px; border-radius: 12px; word-wrap: break-word; }
+.messageBubble { display: flex; flex-direction: column; max-width: 85%; padding: 12px 14px; border-radius: 12px; word-wrap: break-word; white-space: pre-wrap; }
 .message.userMessage .messageBubble { background: var(--accent); color: white; border-radius: 12px 2px 12px 12px; order: 1; }
 .message:not(.userMessage) .messageBubble { background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 2px 12px 12px 12px; order: 2; }
 .messageBubble strong { font-weight: 650; }
@@ -125,6 +139,8 @@
 .messageInput::placeholder { color: #6f7080; }
 .messageInput:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0, 201, 154, 0.1); }
 .messageInput:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.comparisonHint { padding: 10px 12px; margin-bottom: 10px; background: #f0f8f5; border: 1px solid var(--accent-soft); border-radius: 4px; }
+.comparisonHint p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .loadingIndicator { display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
 .loadingDots { display: flex; gap: 3px; }
 .loadingDots span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: loading-pulse 1.4s infinite; }
