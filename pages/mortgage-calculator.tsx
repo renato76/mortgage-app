@@ -13,7 +13,6 @@ interface MortgageProps {
   totalCost?: number
   capitalPaid?: number
   interestPaid?: number
-  remainingBalance?: Array<{ year: number; balance: number }>
   price?: string
   deposit?: string
   interestRate?: string
@@ -26,14 +25,11 @@ const MortgageCalculator = ({
   totalCost,
   capitalPaid,
   interestPaid,
-  remainingBalance,
   price,
   deposit,
   interestRate,
   termYears,
 }: MortgageProps) => {
-  console.log({ remainingBalance })
-
   return (
     <div className="mx-auto bg-[#e8e8e8] min-h-screen pb-24">
       <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-center mb-12 pt-8 text-white bg-blue-600 pb-8">
