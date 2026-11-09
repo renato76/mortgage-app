@@ -121,9 +121,20 @@ const MortgageAssistant = () => {
             {comparison && resultsView === 'compare' ? (
               <>
                 <div className={styles.comparisonTitle}><h2>{comparisonTitles[comparison.scenarioType]}</h2></div>
-                <div className={`${styles.paymentSummary} ${styles.comparisonSummary}`}><p>{comparison.delta.monthlyPayment <= 0 ? 'Monthly repayment reduction' : 'Monthly repayment increase'}</p><strong>{money(Math.abs(comparison.delta.monthlyPayment))}<span>/ month</span></strong><p>{buildComparisonDescription(comparison)}</p></div>
-                <div className={styles.tableWrap}><table className={styles.comparisonTable}><caption className={styles.srOnly}>{comparisonTitles[comparison.scenarioType]}: {comparison.original.label} versus {comparison.scenario.label}</caption><thead><tr><th scope="col">The detail</th><th scope="col">{comparison.original.label}</th><th scope="col">{comparison.scenario.label}</th></tr></thead><tbody>{[
-                  ['Offer price', money(comparison.originalInputs.price), money(comparison.scenarioInputs.price)],
+                <div className={styles.comparisonCards}>
+                  <div className={`${styles.comparisonCard} ${comparison.delta.monthlyPayment <= 0 ? styles.cardSavings : styles.cardAdditional}`}>
+                    <p className={styles.comparisonCardLabel}>{comparison.delta.monthlyPayment <= 0 ? 'Monthly repayment reduction' : 'Monthly repayment increase'}</p>
+                    <strong className={styles.comparisonCardAmount}>{money(Math.abs(comparison.delta.monthlyPayment))}</strong>
+                    <p className={styles.comparisonCardSubtext}>/ month</p>
+                  </div>
+                  <div className={`${styles.comparisonCard} ${comparison.delta.totalInterest < 0 ? styles.cardSavings : styles.cardAdditional}`}>
+                    <p className={styles.comparisonCardLabel}>Total {comparison.delta.totalInterest < 0 ? 'interest saved' : 'additional interest'}</p>
+                    <strong className={styles.comparisonCardAmount}>{money(Math.abs(comparison.delta.totalInterest))}</strong>
+                    <p className={styles.comparisonCardSubtext}>Over the full mortgage term</p>
+                  </div>
+                </div>
+                <div className={styles.tableWrap}><table className={styles.comparisonTable}><caption className={styles.srOnly}>{comparisonTitles[comparison.scenarioType]}: {comparison.original.label} versus {comparison.scenario.label}</caption><thead><tr><th scope="col">The detail</th><th scope="col">{comparison.original.label}</th><th scope="col">Alternative scenario</th></tr></thead><tbody>{[
+                  ['Property price', money(comparison.originalInputs.price), money(comparison.scenarioInputs.price)],
                   ['Deposit', money(comparison.originalInputs.deposit), money(comparison.scenarioInputs.deposit)],
                   ['Mortgage term', `${comparison.originalInputs.termYears} years`, `${comparison.scenarioInputs.termYears} years`],
                   ['Annual rate', `${comparison.originalInputs.interestRate}%`, `${comparison.scenarioInputs.interestRate}%`],
@@ -131,7 +142,15 @@ const MortgageAssistant = () => {
                   ['Monthly repayment', money(comparison.original.results.monthlyPayment), money(comparison.scenario.results.monthlyPayment)],
                   ['Total interest', money(comparison.original.results.interestPaid), money(comparison.scenario.results.interestPaid)],
                   ['Total repayments', money(comparison.original.results.totalCost), money(comparison.scenario.results.totalCost)],
-                ].map(([label, original, scenario]) => <tr key={label} className={label === 'Monthly repayment' ? styles.monthlyRepaymentRow : undefined}><th scope="row">{label}</th><td>{original}</td><td>{scenario}</td></tr>)}</tbody></table></div>
+                ].map(([label, original, scenario]) => {
+                  let rowClass = ''
+                  if (label === 'Monthly repayment') {
+                    rowClass = comparison.delta.monthlyPayment < 0 ? styles.highlightFavorable : styles.highlightUnfavorable
+                  } else if (label === 'Total interest') {
+                    rowClass = comparison.delta.totalInterest < 0 ? styles.highlightFavorable : styles.highlightUnfavorable
+                  }
+                  return <tr key={label} className={rowClass}><th scope="row">{label}</th><td>{original}</td><td>{scenario}</td></tr>
+                })}</tbody></table></div>
                 <p className={styles.disclaimer}>{comparisonNotes[comparison.scenarioType]}</p>
               </>
             ) : chatbotResults ? (

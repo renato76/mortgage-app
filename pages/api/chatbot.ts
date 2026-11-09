@@ -612,9 +612,9 @@ export default async function handler(
     
     const monthlyDifference = Math.abs(delta.monthlyPayment)
     const monthlyDirection = delta.monthlyPayment < 0 ? 'reduce' : 'increase'
-    const interestExplanation = inputs.interestRate === 0
+    const interestExplanation = scenarioInputs.interestRate === 0
       ? 'At 0% interest, there is no mortgage interest to consider.'
-      : `Over the ${inputs.termYears}-year term, you would pay approximately ${pounds.format(Math.abs(delta.totalInterest))} ${delta.totalInterest < 0 ? 'less' : 'more'} in interest.`
+      : `Over the ${scenarioInputs.termYears}-year term, you would pay approximately ${pounds.format(Math.abs(delta.totalInterest))} ${delta.totalInterest < 0 ? 'less' : 'more'} in interest.`
     
     const detailedMessage = `With ${scenarioLabel}: your monthly payment would ${monthlyDirection} by ${pounds.format(monthlyDifference)}. ${interestExplanation}`
     

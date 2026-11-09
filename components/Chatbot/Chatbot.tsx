@@ -94,7 +94,6 @@ const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotPro
 I can help you explore different mortgage scenarios.
 
 To get started, I will require these four details:
-
 • Property price
 • Deposit
 • Mortgage term
@@ -338,7 +337,15 @@ useEffect(() => {
     
     // Handle input collection stage
     if (inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate') {
-      const numValue = parseFloat(messageToSend)
+      // Parse numeric input with K/M support
+      let numValue = parseFloat(messageToSend)
+      
+      // Handle K (thousands) and M (millions) suffixes
+      if (messageToSend.toUpperCase().includes('K')) {
+        numValue = parseFloat(messageToSend) * 1000
+      } else if (messageToSend.toUpperCase().includes('M')) {
+        numValue = parseFloat(messageToSend) * 1000000
+      }
       
       if (isNaN(numValue) || numValue <= 0) {
         setMessages(prev => [...prev, 
@@ -415,7 +422,7 @@ useEffect(() => {
       // Add a bot message with example questions as text
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Try a different rate, term or deposit. Here are some examples:\n\n• Compare 25 vs 30 year term\n• Try 5% interest rate\n• What if I increase deposit by £10k?'
+        content: 'Try a different rate, term or deposit. Here are some examples:\n\n• 5% interest rate and 25 year term\n• What if I increase deposit by £10k?\n• 4.5% interest and £10k extra deposit'
       }])
       
       // Clear CTA so input field is visible
@@ -520,25 +527,27 @@ useEffect(() => {
         </div>
       )}
 
-      <input
-        ref={messageInputRef}
-        aria-label="Message"
-        disabled={loading}
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : "Ask about mortgages..."}
-        className={styles.messageInput}
-        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-      />
+      <div className={styles.inputContainer}>
+        <input
+          ref={messageInputRef}
+          aria-label="Message"
+          disabled={loading}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : "Ask about mortgages..."}
+          className={styles.messageInput}
+          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+        />
 
-      <button
-        ref={sendButtonRef}
-        onClick={() => sendMessage()}
-        disabled={loading}
-        className={styles.actionButton}
-      >
-        {loading ? 'Sending...' : 'Send'}
-      </button>
+        <button
+          ref={sendButtonRef}
+          onClick={() => sendMessage()}
+          disabled={loading}
+          className={styles.actionButton}
+        >
+          {loading ? 'Sending...' : 'Send'}
+        </button>
+      </div>
     </div>
   )
 }

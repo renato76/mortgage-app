@@ -76,6 +76,15 @@
 .results .comparisonSummary > strong { gap: 7px; font-size: 27px; line-height: 1.3; }
 .results .comparisonSummary > strong > span { font-size: 13px; }
 .results .comparisonSummary > p:last-child { font-size: 18px; line-height: 1.6; margin-top: 10px; font-weight: 550; }
+.comparisonCards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+.comparisonCard { padding: 24px; border-radius: 16px; }
+.comparisonCard.cardSavings { background-color: var(--accent-soft); }
+.comparisonCard.cardAdditional { background-color: #fdf3eb; }
+.comparisonCardLabel { font-size: 14px; color: var(--muted); margin: 0 0 8px 0; font-weight: 500; }
+.comparisonCardAmount { display: block; font-size: 28px; font-weight: 600; color: var(--ink); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.comparisonCard.cardSavings .comparisonCardAmount { color: #1e7a66; }
+.comparisonCard.cardAdditional .comparisonCardAmount { color: #8b6f47; }
+.comparisonCardSubtext { font-size: 13px; color: var(--muted); margin: 0; }
 .breakdown { margin: 0; }
 .breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .breakdown dt { color: var(--muted); }
@@ -100,30 +109,32 @@
 .textButton:hover { text-decoration: underline; text-underline-offset: 3px; }
 .propertyPrice { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--muted); margin: 0 0 18px; }
 .propertyPrice strong { color: var(--ink); font-weight: 550; }
-.tableWrap { overflow-x: auto; }
-.comparisonTable { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tableWrap { overflow-x: auto; background: white; padding-left: 16px; }
+.comparisonTable { width: 100%; border-collapse: collapse; font-size: 14px; background: white; }
 .comparisonTable th, .comparisonTable td { border-bottom: 1px solid var(--line); text-align: right; padding: 10px 10px; font-variant-numeric: tabular-nums; }
 .comparisonTable thead th { color: var(--muted); font-weight: 500; font-size: 13px; }
 .comparisonTable th:first-child { text-align: left; padding-left: 0; font-weight: 500; }
 .comparisonTable td { white-space: nowrap; font-weight: 550; }
-.comparisonTable td:last-child, .comparisonTable thead th:last-child { background: var(--accent-soft); color: var(--ink); }
-.comparisonTable .monthlyRepaymentRow th, .comparisonTable .monthlyRepaymentRow td { background: var(--accent-soft); font-size: 13px; font-weight: 700; }
-.comparisonTable .monthlyRepaymentRow td:last-child { background: #c9f1e4; }
-.chatbot { padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); }
+.comparisonTable td:last-child, .comparisonTable thead th:last-child { background: #f0faf7; color: var(--ink); }
+.highlightFavorable th, .highlightFavorable td { background: white; font-size: 13px; font-weight: 700; }
+.highlightFavorable td:last-child { background: #d0eae4; }
+.highlightUnfavorable th, .highlightUnfavorable td { background: white; font-size: 13px; font-weight: 700; }
+.highlightUnfavorable td:last-child { background: #fce5d8; }
+.chatbot { padding: 18px; background: white; color: var(--ink); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border-radius: 8px; }
 .chatbotHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
 .chatbotTitle { font-size: 16px; font-weight: 650; margin: 0; }
 .resetButton { font-size: 12px; font-weight: 600; padding: 6px 12px; border: 1px solid var(--line); border-radius: 3px; background: #f0f1f5; color: var(--ink); cursor: pointer; transition: all 0.15s ease-in-out; white-space: nowrap; }
 .resetButton:hover { background: #e5e7f0; border-color: #c5c9d5; }
 .resetButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
-.chatLog { height: 480px; overflow-y: auto; overscroll-behavior: contain; background: #f8f9fb; border: 1px solid var(--line); padding: 14px; margin-bottom: 12px; }
-.message { display: flex; gap: 10px; font-size: 14px; line-height: 1.85; margin-bottom: 12px; align-items: flex-end; }
+.chatLog { height: 480px; overflow-y: auto; overscroll-behavior: contain; background: #f5f7fa; padding: 14px; margin-bottom: 12px; border-radius: 6px; }
+.message { display: flex; gap: 6px; font-size: 14px; line-height: 1.4; margin-bottom: 12px; align-items: flex-end; }
 .message.userMessage { justify-content: flex-end; }
 .messageAvatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
 .message.userMessage .messageAvatar { background: var(--accent); color: white; order: 2; }
 .message:not(.userMessage) .messageAvatar { background: #e8eef6; color: var(--accent-ink); order: 1; }
-.messageBubble { display: flex; flex-direction: column; max-width: 85%; padding: 12px 14px; border-radius: 12px; word-wrap: break-word; white-space: pre-wrap; }
-.message.userMessage .messageBubble { background: var(--accent); color: white; border-radius: 12px 2px 12px 12px; order: 1; }
-.message:not(.userMessage) .messageBubble { background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 2px 12px 12px 12px; order: 2; }
+.messageBubble { display: flex; flex-direction: column; max-width: 96%; padding: 16px 18px; border-radius: 20px; word-wrap: break-word; white-space: pre-wrap; }
+.message.userMessage .messageBubble { background: var(--accent); color: white; border-radius: 12px 2px 12px 12px; order: 1; padding: 12px 14px; }
+.message:not(.userMessage) .messageBubble { background: white; color: var(--ink); border: 1px solid #e5e7f0; border-radius: 2px 20px 20px 20px; order: 2; }
 .messageBubble strong { font-weight: 650; }
 .message.userMessage .messageBubble strong { color: inherit; }
 .userMessage { color: var(--ink); }
@@ -131,14 +142,15 @@
 .chatChoices { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
 .chatChoices > p { font-size: 13px; font-weight: 550; line-height: 1.7; margin-bottom: 10px; }
 .chatChoiceOptions { display: flex; flex-wrap: wrap; gap: 8px; }
-.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 10px 14px; min-height: 40px; background: var(--accent); color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; white-space: normal; transition: all 0.15s ease-in-out; }
+.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 10px 14px; min-height: 44px; background: var(--accent); color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; white-space: nowrap; transition: all 0.15s ease-in-out; flex-shrink: 0; }
 .actionButton:hover:not(:disabled) { background: #00b98d; border-color: #00b98d; }
 .actionButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; box-shadow: 0 0 0 3px rgba(0, 107, 84, 0.1); }
 .actionButton:active:not(:disabled) { transform: scale(0.98); }
-.messageInput { display: block; width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; margin-bottom: 10px; background: white; color: var(--ink); font-size: 14px; transition: all 0.15s ease-in-out; }
+.messageInput { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: white; color: var(--ink); font-size: 14px; transition: all 0.15s ease-in-out; margin-right: 8px; margin-bottom: 0; }
 .messageInput::placeholder { color: #6f7080; }
 .messageInput:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0, 201, 154, 0.1); }
 .messageInput:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.inputContainer { display: flex; gap: 8px; align-items: stretch; }
 .comparisonHint { padding: 10px 12px; margin-bottom: 10px; background: #f0f8f5; border: 1px solid var(--accent-soft); border-radius: 4px; }
 .comparisonHint p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .loadingIndicator { display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
@@ -182,6 +194,9 @@
   .results { padding-top: 23px; }
   .emptyResults h2 br { display: none; }
   .paymentSummary > strong { font-size: 36px; }
+  .comparisonCardLabel { font-size: 12px; }
+  .comparisonCardAmount { font-size: 24px; }
+  .comparisonCardSubtext { font-size: 12px; }
   .assumptions { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .assumptions dd { font-size: 10px; overflow-wrap: anywhere; }
   .comparisonTable { min-width: 310px; font-size: 12px; }
