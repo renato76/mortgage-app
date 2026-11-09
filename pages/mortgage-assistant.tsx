@@ -30,12 +30,10 @@ const buildComparisonDescription = (comparison: MortgageComparison): string => {
     changed.push(`£${scenarioInputs.price.toLocaleString()} property`)
   }
   
-  const changeDesc = changed.join(', ')
-  const direction = delta.totalInterest < 0 ? 'less' : 'more'
+  const direction = delta.totalInterest < 0 ? 'saved' : 'additional'
   const interestAmount = money(Math.abs(delta.totalInterest))
-  const term = scenarioInputs.termYears
   
-  return `With ${changeDesc}, that's ${interestAmount} ${direction} interest paid over the ${term} year term.`
+  return `Total ${direction} interest over the term: ${interestAmount}`
 }
 
 const comparisonTitles = {

@@ -101,13 +101,13 @@
 .propertyPrice { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--muted); margin: 0 0 18px; }
 .propertyPrice strong { color: var(--ink); font-weight: 550; }
 .tableWrap { overflow-x: auto; }
-.comparisonTable { width: 100%; border-collapse: collapse; font-size: 16px; }
-.comparisonTable th, .comparisonTable td { border-bottom: 1px solid var(--line); text-align: right; padding: 14px 10px; font-variant-numeric: tabular-nums; }
+.comparisonTable { width: 100%; border-collapse: collapse; font-size: 14px; }
+.comparisonTable th, .comparisonTable td { border-bottom: 1px solid var(--line); text-align: right; padding: 10px 10px; font-variant-numeric: tabular-nums; }
 .comparisonTable thead th { color: var(--muted); font-weight: 500; font-size: 13px; }
 .comparisonTable th:first-child { text-align: left; padding-left: 0; font-weight: 500; }
 .comparisonTable td { white-space: nowrap; font-weight: 550; }
 .comparisonTable td:last-child, .comparisonTable thead th:last-child { background: var(--accent-soft); color: var(--ink); }
-.comparisonTable .monthlyRepaymentRow th, .comparisonTable .monthlyRepaymentRow td { background: var(--accent-soft); font-size: 15px; font-weight: 700; }
+.comparisonTable .monthlyRepaymentRow th, .comparisonTable .monthlyRepaymentRow td { background: var(--accent-soft); font-size: 13px; font-weight: 700; }
 .comparisonTable .monthlyRepaymentRow td:last-child { background: #c9f1e4; }
 .chatbot { padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); }
 .chatbotHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
@@ -115,7 +115,7 @@
 .resetButton { font-size: 12px; font-weight: 600; padding: 6px 12px; border: 1px solid var(--line); border-radius: 3px; background: #f0f1f5; color: var(--ink); cursor: pointer; transition: all 0.15s ease-in-out; white-space: nowrap; }
 .resetButton:hover { background: #e5e7f0; border-color: #c5c9d5; }
 .resetButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
-.chatLog { height: 390px; overflow-y: auto; overscroll-behavior: contain; background: #f8f9fb; border: 1px solid var(--line); padding: 14px; margin-bottom: 12px; }
+.chatLog { height: 480px; overflow-y: auto; overscroll-behavior: contain; background: #f8f9fb; border: 1px solid var(--line); padding: 14px; margin-bottom: 12px; }
 .message { display: flex; gap: 10px; font-size: 14px; line-height: 1.85; margin-bottom: 12px; align-items: flex-end; }
 .message.userMessage { justify-content: flex-end; }
 .messageAvatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }

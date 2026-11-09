@@ -584,12 +584,13 @@ export default async function handler(
     }
 
     const scenarioType = changedFields.length > 1 ? 'multiple' : changedFields[0]
-    const scenarioLabel = [
+    const scenarioLabelParts = [
       ...(changedFields.includes('deposit') ? [`${compactPounds(scenarioInputs.deposit)} deposit`] : []),
-      ...(changedFields.includes('term') ? [`${scenarioInputs.termYears}y`] : []),
-      ...(changedFields.includes('price') ? [`${compactPounds(scenarioInputs.price)} offer`] : []),
-      ...(changedFields.includes('rate') ? [`${scenarioInputs.interestRate}%`] : []),
-    ].join(' · ')
+      ...(changedFields.includes('term') ? [`${scenarioInputs.termYears}y term`] : []),
+      ...(changedFields.includes('price') ? [`${compactPounds(scenarioInputs.price)} property`] : []),
+      ...(changedFields.includes('rate') ? [`a rate of ${scenarioInputs.interestRate}%`] : []),
+    ]
+    const scenarioLabel = scenarioLabelParts.join(' · ')
     
     const originalResults = calculateMortgageDetails(
       inputs.price,
@@ -599,7 +600,7 @@ export default async function handler(
     )
     const comparison = compareMortgageScenarios(inputs, scenarioInputs, scenarioType, scenarioLabel)
     
-    // Build detailed comparison message (same as CTA button flow)
+    // Build detailed comparison message
     const delta = {
       monthlyPayment: comparison.delta.monthlyPayment,
       totalInterest: comparison.delta.totalInterest,
@@ -610,12 +611,12 @@ export default async function handler(
     })
     
     const monthlyDifference = Math.abs(delta.monthlyPayment)
-    const direction = delta.monthlyPayment < 0 ? 'reduce' : 'increase'
+    const monthlyDirection = delta.monthlyPayment < 0 ? 'reduce' : 'increase'
     const interestExplanation = inputs.interestRate === 0
-      ? 'At 0% interest, there is no mortgage interest to save.'
-      : `Over the ${inputs.termYears}-year term, you would also ${delta.totalInterest < 0 ? 'save' : 'pay'} approximately ${pounds.format(Math.abs(delta.totalInterest))} in interest.`
+      ? 'At 0% interest, there is no mortgage interest to consider.'
+      : `Over the ${inputs.termYears}-year term, you would pay approximately ${pounds.format(Math.abs(delta.totalInterest))} ${delta.totalInterest < 0 ? 'less' : 'more'} in interest.`
     
-    const detailedMessage = `Compared with ${scenarioLabel}: your monthly payment would ${direction} by ${pounds.format(monthlyDifference)}. ${interestExplanation} Total cost difference: ${pounds.format(delta.totalCost)}.`
+    const detailedMessage = `With ${scenarioLabel}: your monthly payment would ${monthlyDirection} by ${pounds.format(monthlyDifference)}. ${interestExplanation}`
     
     return res.status(200).json({
       state: 'complete',
