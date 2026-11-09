@@ -63,9 +63,10 @@
 .resultState { font-size: 10px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
 .resultState::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink); }
 .resultTabsContainer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
-.resultTabs { display: inline-flex; gap: 3px; padding: 3px; margin: 0; border: 1px solid var(--line); border-radius: 4px; background: #f0f1f5; }
-.resultTab { min-height: 34px; padding: 6px 12px; border: 0; border-radius: 2px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 550; }
-.resultTab[aria-pressed='true'] { background: white; color: var(--ink); box-shadow: 0 1px 2px rgb(13 0 61 / 12%); }
+.resultTabs { display: inline-flex; gap: 2px; padding: 4px; margin: 0; border: none; border-radius: 6px; background: #f0f1f5; }
+.resultTab { min-height: 36px; padding: 8px 16px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s ease-in-out; }
+.resultTab[aria-pressed='true'] { color: var(--ink); border-bottom-color: transparent; background: white; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
+.resultTab[aria-pressed='false']:hover { color: var(--ink); }
 .results h2 { font-size: 23px; font-weight: 500; line-height: 1.35; margin: 0 0 22px; }
 .paymentSummary { padding: 4px 0 20px; border: 0; border-bottom: 1px solid var(--line); background: transparent; margin-bottom: 20px; }
 .paymentSummary > p:first-child, .emptyPayment > p { font-size: 12px; color: var(--muted); }
@@ -122,7 +123,7 @@
 .highlightUnfavorable td:last-child { background: #fce5d8; }
 .chatbot { padding: 18px; background: white; color: var(--ink); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border-radius: 8px; }
 .chatbotHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
-.chatbotTitle { font-size: 16px; font-weight: 650; margin: 0; }
+.chatbotTitle { font-size: 16px; font-weight: 650; margin: 0 0 12px 0; }
 .resetButton { font-size: 12px; font-weight: 600; padding: 6px 12px; border: 1px solid var(--line); border-radius: 3px; background: #f0f1f5; color: var(--ink); cursor: pointer; transition: all 0.15s ease-in-out; white-space: nowrap; }
 .resetButton:hover { background: #e5e7f0; border-color: #c5c9d5; }
 .resetButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
@@ -142,7 +143,7 @@
 .chatChoices { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
 .chatChoices > p { font-size: 13px; font-weight: 550; line-height: 1.7; margin-bottom: 10px; }
 .chatChoiceOptions { display: flex; flex-wrap: wrap; gap: 8px; }
-.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 10px 14px; min-height: 44px; background: var(--accent); color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.4; white-space: nowrap; transition: all 0.15s ease-in-out; flex-shrink: 0; }
+.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 10px 14px; min-height: 44px; background: var(--accent); color: white; font-size: 13px; font-weight: 600; line-height: 1.4; white-space: nowrap; transition: all 0.15s ease-in-out; flex-shrink: 0; }
 .actionButton:hover:not(:disabled) { background: #00b98d; border-color: #00b98d; }
 .actionButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; box-shadow: 0 0 0 3px rgba(0, 107, 84, 0.1); }
 .actionButton:active:not(:disabled) { transform: scale(0.98); }
