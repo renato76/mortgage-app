@@ -140,9 +140,8 @@ const MortgageAssistant = () => {
                 {chatbotResults.fundingType === 'cash' ? <div className={styles.paymentSummary}><p>Purchase price</p><strong>{money(chatbotResults.purchasePrice || 0)}</strong><p>No mortgage borrowing or repayments required.</p></div> : <>
                   <div className={styles.paymentSummary}><p>Estimated monthly repayment</p><strong>{money(chatbotResults.monthlyPayment)}<span>/ month</span></strong><p>Capital and interest repayments</p></div>
                   <dl className={styles.breakdown}><div><dt>Mortgage borrowing</dt><dd>{money(chatbotResults.capitalPaid)}</dd></div><div><dt>Total interest</dt><dd>{money(chatbotResults.interestPaid)}</dd></div><div><dt>Total mortgage repayments</dt><dd>{money(chatbotResults.totalCost)}</dd></div></dl>
-                  <BalanceChart results={chatbotResults} />
                 </>}
-                {inputs && <dl className={styles.assumptions}><div><dt>Property</dt><dd>{money(inputs.price)}</dd></div><div><dt>Deposit</dt><dd>{money(inputs.deposit)}</dd></div><div><dt>Annual rate</dt><dd>{inputs.interestRate}%</dd></div><div><dt>Term</dt><dd>{inputs.termYears} years</dd></div></dl>}
+                {inputs && <dl className={styles.assumptions}><div><dt>Property price</dt><dd>{money(inputs.price)}</dd></div><div><dt>Deposit</dt><dd>{money(inputs.deposit)}</dd></div><div><dt>Annual rate</dt><dd>{inputs.interestRate}%</dd></div><div><dt>Term</dt><dd>{inputs.termYears} years</dd></div></dl>}
                 <p className={styles.disclaimer}>Assumes an unchanged rate over the full term. Excludes purchase taxes, fees and other buying costs.</p>
               </>
             ) : (

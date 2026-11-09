@@ -71,6 +71,11 @@ const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotPro
   const [failedMessages, setFailedMessages] = useState<ChatMessage[] | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [errorType, setErrorType] = useState<'transient' | 'permanent' | null>(null)
+  
+  // Input collection state
+  const [inputStage, setInputStage] = useState<'welcome' | 'price' | 'deposit' | 'term' | 'rate' | 'complete'>('welcome')
+  const [collectedInputs, setCollectedInputs] = useState<Partial<MortgageInputs>>({})
+  
   const requestInFlight = useRef(false)
   const chatLogRef = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -88,29 +93,30 @@ const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotPro
 
 I can help you explore different mortgage scenarios.
 
-To get started, enter these four details in the calculator:
+To get started, I will require these four details:
 
 • Property price
 • Deposit
 • Mortgage term
 • Interest rate
 
-`;
+So first of all, what's the property price?`
 
 useEffect(() => {
-  if (!initialInputs && messages.length === 0) {
+  if (messages.length === 0) {
     setMessages([
       {
         role: 'assistant',
         content: welcomeMessage,
       },
-    ]);
+    ])
+    setInputStage('price')
   }
-}, []);
+}, [])
 
-  // Show real example questions when inputs are provided
+  // Show example questions when results are calculated
   useEffect(() => {
-    if (initialInputs && !ctaPrompt) {
+    if (initialInputs && inputStage === 'complete' && !ctaPrompt) {
       setLastInputs(initialInputs)
       setComparisonContext({ originalInputs: initialInputs, scenarioInputs: initialInputs })
       
@@ -328,6 +334,64 @@ useEffect(() => {
     const messageToSend = userInput ?? input
     if (!messageToSend.trim()) return
 
+    setInput('')
+    
+    // Handle input collection stage
+    if (inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate') {
+      const numValue = parseFloat(messageToSend)
+      
+      if (isNaN(numValue) || numValue <= 0) {
+        setMessages(prev => [...prev, 
+          { role: 'user', content: messageToSend },
+          { role: 'assistant', content: `Please enter a valid number for ${inputStage}.` }
+        ])
+        return
+      }
+      
+      // Store the input
+      const newCollected = { ...collectedInputs }
+      if (inputStage === 'price') newCollected.price = numValue
+      if (inputStage === 'deposit') newCollected.deposit = numValue
+      if (inputStage === 'term') newCollected.termYears = numValue
+      if (inputStage === 'rate') newCollected.interestRate = numValue
+      
+      setCollectedInputs(newCollected)
+      
+      // Add user message
+      setMessages(prev => [...prev, { role: 'user', content: messageToSend }])
+      
+      // Check if we have all 4 inputs
+      if (inputStage === 'rate' && newCollected.price && newCollected.deposit && newCollected.termYears && newCollected.interestRate) {
+        // All inputs collected - calculate
+        setInputStage('complete')
+        const fullInputs = newCollected as MortgageInputs
+        const calcMessage = `calculate price £${fullInputs.price}, deposit £${fullInputs.deposit}, term ${fullInputs.termYears} years, rate ${fullInputs.interestRate}%`
+        await submitMessages([...messages, { role: 'user', content: messageToSend }, { role: 'user', content: calcMessage }])
+        return
+      }
+      
+      // Move to next stage
+      const nextStageMap: Record<'price' | 'deposit' | 'term' | 'rate', 'deposit' | 'term' | 'rate'> = {
+        'price': 'deposit',
+        'deposit': 'term',
+        'term': 'rate',
+        'rate': 'rate'
+      }
+      const nextStage = nextStageMap[inputStage]
+      setInputStage(nextStage)
+      
+      // Ask for next input
+      const prompts: Record<'deposit' | 'term' | 'rate', string> = {
+        'deposit': `Great! That's £${numValue.toLocaleString()}. Now, what's your deposit?`,
+        'term': `Got it, £${numValue.toLocaleString()}. What's the mortgage term in years?`,
+        'rate': `Perfect, ${numValue} years. What's the interest rate (annual %)?`
+      }
+      
+      setMessages(prev => [...prev, { role: 'assistant', content: prompts[nextStage] }])
+      return
+    }
+    
+    // After calculation, normal chatbot mode
     const currentInputs = extra || comparisonContext?.originalInputs || lastInputs
     const messageObj: ChatMessage = currentInputs
       ? {
@@ -338,7 +402,6 @@ useEffect(() => {
         }
       : { role: 'user', content: messageToSend }
 
-    setInput('')
     await submitMessages([...messages, messageObj])
   }
 
@@ -463,7 +526,7 @@ useEffect(() => {
         disabled={loading}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Ask about mortgages..."
+        placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : "Ask about mortgages..."}
         className={styles.messageInput}
         onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
       />
