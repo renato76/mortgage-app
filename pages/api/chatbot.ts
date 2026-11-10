@@ -225,8 +225,6 @@ export default async function handler(
 
   try {
     // HANDLE CTA SELECTIONS FIRST (before calling OpenAI)
-    const lastMessage = messages[messages.length - 1]
-
     const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user')
     const hasComparisonIntent = Boolean(latestUserMessage && /\bcompare\b/i.test(latestUserMessage.content))
     const hasScenarioChangeIntent = Boolean(

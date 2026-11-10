@@ -114,6 +114,7 @@ useEffect(() => {
     ])
     setInputStage('price')
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [])
 
   // Show example questions when results are calculated
@@ -138,6 +139,7 @@ useEffect(() => {
         ]
       })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialInputs?.price, initialInputs?.deposit, initialInputs?.interestRate, initialInputs?.termYears, ctaPrompt])
 
   // Auto-scroll chat log to bottom when messages or CTA changes
