@@ -28,27 +28,6 @@ const comparisonNotes = {
   multiple: 'Only the requested mortgage inputs change; all other assumptions stay the same. Taxes, fees and other purchase costs are not included.',
 }
 
-function BalanceChart({ results }: { results: ChatbotMortgageResults }) {
-  if (!results.remainingBalance?.length || results.capitalPaid <= 0) return null
-  const schedule = [{ year: 0, balance: results.capitalPaid }, ...results.remainingBalance]
-  const finalYear = schedule[schedule.length - 1].year
-  const points = schedule.map(({ year, balance }) =>
-    `${8 + year / finalYear * 304},${12 + (1 - balance / results.capitalPaid) * 106}`
-  ).join(' ')
-
-  return (
-    <figure className={styles.chart}>
-      <figcaption>Remaining mortgage balance</figcaption>
-      <svg viewBox="0 0 320 132" role="img" aria-label={`Mortgage balance reduces from ${money(results.capitalPaid)} to zero over ${finalYear} years`}>
-        <path d="M8 12H312 M8 65H312 M8 118H312" stroke="var(--line)" strokeDasharray="3 4" fill="none" />
-        <polygon points={`8,118 ${points} 312,118`} fill="var(--accent-soft)" />
-        <polyline points={points} fill="none" stroke="var(--accent-ink)" strokeWidth="2.5" strokeLinejoin="round" />
-      </svg>
-      <div className={styles.chartAxis}><span>Today</span><span>Year {finalYear}</span></div>
-    </figure>
-  )
-}
-
 const MortgageAssistant = () => {
   const [chatbotResults, setChatbotResults] =
     useState<ChatbotMortgageResults | null>(null)
