@@ -73,7 +73,7 @@ const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotPro
   const [errorType, setErrorType] = useState<'transient' | 'permanent' | null>(null)
   
   // Input collection state
-  const [inputStage, setInputStage] = useState<'welcome' | 'price' | 'deposit' | 'term' | 'rate' | 'complete' | 'comparison_prompt'>('welcome')
+  const [inputStage, setInputStage] = useState<'welcome' | 'price' | 'deposit' | 'term' | 'rate' | 'complete' | 'comparison_prompt' | 'comparison_results'>('welcome')
   const [collectedInputs, setCollectedInputs] = useState<Partial<MortgageInputs>>({})
   
   const requestInFlight = useRef(false)
@@ -298,14 +298,50 @@ useEffect(() => {
       }
 
       if (data.comparison) {
+        setInputStage('comparison_results')
         setComparison(data.comparison)
         setComparisonContext({
           originalInputs: data.comparison.originalInputs,
           scenarioInputs: data.comparison.scenarioInputs,
         })
         
-        // Clear any previous CTAs
-        setCtaPrompt(null)
+        // Show affordability prompt after comparison
+        const delta = data.comparison.delta
+        const scenarioType = data.comparison.scenarioType
+        
+        let benefit = ''
+        if (scenarioType === 'deposit' && delta.monthlyPayment < 0) {
+          const depositDifference = data.comparison.scenarioInputs.deposit - data.comparison.originalInputs.deposit
+          benefit = `${depositDifference > 0 ? 'Increasing' : 'Reducing'} your deposit by £${Math.abs(depositDifference).toLocaleString()} reduces your monthly repayments and overall interest.`
+        } else if (scenarioType === 'rate' && delta.monthlyPayment < 0) {
+          const rateChange = data.comparison.scenarioInputs.interestRate < data.comparison.originalInputs.interestRate ? 'lower' : 'higher'
+          benefit = `A ${rateChange} interest rate of ${data.comparison.scenarioInputs.interestRate}% reduces your monthly repayments and overall interest.`
+        } else if (scenarioType === 'term') {
+          benefit = `Here's how a ${data.comparison.scenarioInputs.termYears} year mortgage term compares.`
+        } else if (scenarioType === 'price' && delta.monthlyPayment < 0) {
+          benefit = `This scenario improves your mortgage outcomes.`
+        }
+        
+        if (benefit) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `Great! ${benefit}\n\nWould you also like to explore whether this mortgage could be affordable based on your income and monthly outgoings?`
+          }])
+        } else {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: 'Would you like to explore whether this mortgage could be affordable based on your income and monthly outgoings?'
+          }])
+        }
+        
+        setCtaPrompt({
+          question: '',
+          type: 'affordability_prompt',
+          options: [
+            { label: 'Explore affordability', value: 'explore_affordability' },
+            { label: 'Try another scenario', value: 'try_another_scenario' }
+          ]
+        })
       } else if (data.ctaPrompt) {
         // Skip scenario_comparison CTA - show suggestions directly instead
         if (data.ctaPrompt.type === 'scenario_comparison') {
@@ -353,8 +389,35 @@ useEffect(() => {
     
     // Handle input collection stage
     if (inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate') {
-      // Parse numeric input with K/M support
+      // Check for "go back", "change", "start over" commands
+      const lowerInput = messageToSend.toLowerCase()
+      if (lowerInput.includes('back') || lowerInput.includes('change') || lowerInput.includes('start over') || lowerInput.includes('restart') || lowerInput === 'go back') {
+        setMessages(prev => [...prev, 
+          { role: 'user', content: messageToSend },
+          { role: 'assistant', content: 'What would you like to do?\n\n• Start over with new numbers\n• Change the property price\n• Change the deposit\n• Change the mortgage term\n• Change the interest rate' }
+        ])
+        return
+      }
+      
+      // Smart parser: extract number from phrases like "deposit 90k", "price 450k", etc.
       let numValue = parseFloat(messageToSend)
+      const messageLower = messageToSend.toLowerCase()
+      
+      // If the message contains stage keywords, extract just the number
+      const stageKeywords = {
+        'price': ['price', 'property', 'property price', 'offer'],
+        'deposit': ['deposit', 'down payment'],
+        'term': ['term', 'years', 'mortgage term'],
+        'rate': ['rate', 'interest', 'annual']
+      }
+      
+      if (stageKeywords[inputStage as keyof typeof stageKeywords].some(kw => messageLower.includes(kw))) {
+        // Extract the first number from the message
+        const numberMatch = messageToSend.match(/[\d.]+/g)
+        if (numberMatch) {
+          numValue = parseFloat(numberMatch[0])
+        }
+      }
       
       // Handle K (thousands) and M (millions) suffixes
       if (messageToSend.toUpperCase().includes('K')) {
@@ -366,9 +429,61 @@ useEffect(() => {
       if (isNaN(numValue) || numValue <= 0) {
         setMessages(prev => [...prev, 
           { role: 'user', content: messageToSend },
-          { role: 'assistant', content: `Please enter a valid number for ${inputStage}.` }
+          { role: 'assistant', content: `I need a valid number for ${inputStage}. For example, try '${inputStage === 'price' ? '450000' : inputStage === 'deposit' ? '90000' : inputStage === 'term' ? '25' : '4.5'}' or '${inputStage === 'price' ? '450k' : inputStage === 'deposit' ? '90k' : inputStage === 'term' ? '25' : '4.5'}'.` }
         ])
         return
+      }
+      
+      // Validation: property price range (£50k - £2m)
+      if (inputStage === 'price') {
+        const MIN_PRICE = 50000
+        const MAX_PRICE = 2000000
+        if (numValue < MIN_PRICE || numValue > MAX_PRICE) {
+          setMessages(prev => [...prev, 
+            { role: 'user', content: messageToSend },
+            { role: 'assistant', content: `Property prices typically range from £${MIN_PRICE.toLocaleString()} to £${MAX_PRICE.toLocaleString()}. Please enter a price within this range.` }
+          ])
+          return
+        }
+      }
+      
+      // Validation: minimum 10% deposit
+      if (inputStage === 'deposit' && collectedInputs.price && collectedInputs.price > 0) {
+        const propertyPrice = collectedInputs.price
+        const minDeposit = propertyPrice * 0.1
+        if (numValue < minDeposit) {
+          setMessages(prev => [...prev, 
+            { role: 'user', content: messageToSend },
+            { role: 'assistant', content: `That's £${numValue.toLocaleString()}, but you need at least 10% of the property price as a deposit. For a £${propertyPrice.toLocaleString()} property, that's a minimum of £${Math.round(minDeposit).toLocaleString()}. What deposit would you like to use?` }
+          ])
+          return
+        }
+      }
+      
+      // Validation: mortgage term range (5-30 years)
+      if (inputStage === 'term') {
+        const MIN_TERM = 5
+        const MAX_TERM = 30
+        if (numValue < MIN_TERM || numValue > MAX_TERM) {
+          setMessages(prev => [...prev, 
+            { role: 'user', content: messageToSend },
+            { role: 'assistant', content: `Mortgage terms typically range from ${MIN_TERM} to ${MAX_TERM} years. Please enter a term within this range.` }
+          ])
+          return
+        }
+      }
+      
+      // Validation: interest rate range (0.5% - 10%)
+      if (inputStage === 'rate') {
+        const MIN_RATE = 0.5
+        const MAX_RATE = 10
+        if (numValue < MIN_RATE || numValue > MAX_RATE) {
+          setMessages(prev => [...prev, 
+            { role: 'user', content: messageToSend },
+            { role: 'assistant', content: `Interest rates typically range from ${MIN_RATE}% to ${MAX_RATE}%. Please enter a rate within this range.` }
+          ])
+          return
+        }
       }
       
       // Store the input
@@ -443,6 +558,61 @@ useEffect(() => {
       
       // Clear CTA so input field is visible
       setCtaPrompt(null)
+      setInputStage('comparison_prompt')
+      
+      return
+    }
+    
+    // Handle edit inputs menu
+    if (ctaPrompt.type === 'edit_inputs') {
+      if (value === 'restart') {
+        setCollectedInputs({})
+        setInputStage('price')
+        setCtaPrompt(null)
+        setMessages(prev => [...prev, 
+          { role: 'user', content: 'Start over' },
+          { role: 'assistant', content: 'Great! Let\'s start fresh.\n\nSo first of all, what\'s the property price?' }
+        ])
+        return
+      }
+      
+      const stageMap: Record<string, 'price' | 'deposit' | 'term' | 'rate'> = {
+        'change_price': 'price',
+        'change_deposit': 'deposit',
+        'change_term': 'term',
+        'change_rate': 'rate'
+      }
+      
+      const newStage = stageMap[value]
+      if (newStage) {
+        setInputStage(newStage)
+        setCtaPrompt(null)
+        
+        const prompts: Record<'price' | 'deposit' | 'term' | 'rate', string> = {
+          'price': 'What\'s the property price?',
+          'deposit': 'What\'s your deposit?',
+          'term': 'What\'s the mortgage term in years?',
+          'rate': 'What\'s the interest rate (annual %)?'
+        }
+        
+        setMessages(prev => [...prev, 
+          { role: 'user', content: `Change the ${newStage}` },
+          { role: 'assistant', content: prompts[newStage] }
+        ])
+      }
+      return
+    }
+    
+    // Handle try another scenario - show comparison suggestions
+    if (ctaPrompt.type === 'affordability_prompt' && value === 'try_another_scenario') {
+      setInput('')
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Try a different rate, term or deposit. Here are some examples:\n\n• 5% interest rate and 25 year term\n• What if I increase deposit by £10k?\n• 4.5% interest and £10k extra deposit'
+      }])
+      
+      setCtaPrompt(null)
+      setInputStage('comparison_prompt')
       
       return
     }
@@ -507,7 +677,11 @@ useEffect(() => {
                 <button
                   key={opt.value}
                   disabled={loading}
-                  className={styles.actionButton}
+                  className={`${styles.actionButton} ${
+                    opt.value === 'explore_affordability' ? styles.primaryCta : ''
+                  } ${
+                    opt.value === 'try_another_scenario' ? styles.secondaryCta : ''
+                  }`}
                   onClick={() => handleCtaSelection(opt.value)}
                 >
                   {opt.label}
@@ -550,7 +724,7 @@ useEffect(() => {
           disabled={loading}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : inputStage === 'comparison_prompt' ? "Try a different scenario..." : "Ask about mortgages..."}
+          placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : (inputStage === 'comparison_prompt' || inputStage === 'comparison_results') ? "Compare witha different scenario..." : "Ask about mortgages..."}
           className={styles.messageInput}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
         />
@@ -563,6 +737,29 @@ useEffect(() => {
         >
           {loading ? 'Sending...' : 'Send'}
         </button>
+        
+        {(inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate') && (
+          <button
+            onClick={() => {
+              setCtaPrompt({
+                question: '',
+                type: 'edit_inputs',
+                options: [
+                  { label: 'Start over with new numbers', value: 'restart' },
+                  { label: 'Change the property price', value: 'change_price' },
+                  { label: 'Change the deposit', value: 'change_deposit' },
+                  { label: 'Change the mortgage term', value: 'change_term' },
+                  { label: 'Change the interest rate', value: 'change_rate' }
+                ]
+              })
+            }}
+            disabled={loading}
+            className={styles.actionButton}
+            style={{ background: '#f0f1f5', color: '#555', border: '1px solid #ddd' }}
+          >
+            Go Back
+          </button>
+        )}
       </div>
     </div>
   )

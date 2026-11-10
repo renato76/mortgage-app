@@ -63,10 +63,10 @@
 .resultState { font-size: 10px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
 .resultState::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink); }
 .resultTabsContainer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
-.resultTabs { display: inline-flex; gap: 2px; padding: 4px; margin: 0; border: none; border-radius: 6px; background: #f0f1f5; }
-.resultTab { min-height: 36px; padding: 8px 16px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s ease-in-out; }
-.resultTab[aria-pressed='true'] { color: var(--ink); border-bottom-color: transparent; background: white; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
-.resultTab[aria-pressed='false']:hover { color: var(--ink); }
+.resultTabs { display: inline-flex; gap: 1px; padding: 0; margin: 0; border: none; border-radius: 0; background: transparent; }
+.resultTab { min-height: 36px; padding: 8px 16px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s ease-in-out; border-bottom: 2px solid transparent; }
+.resultTab[aria-pressed='true'] { color: var(--ink); background: transparent; border-bottom-color: var(--accent); box-shadow: none; }
+.resultTab[aria-pressed='false']:hover { color: var(--ink); background: transparent; }
 .results h2 { font-size: 18px; font-weight: 500; line-height: 1.35; margin: 0 0 22px; }
 .paymentSummary { padding: 4px 0 20px; border: 0; border-bottom: 1px solid var(--line); background: transparent; margin-bottom: 20px; }
 .paymentSummary > p:first-child, .emptyPayment > p { font-size: 12px; color: var(--muted); }
@@ -147,11 +147,15 @@
 .actionButton:hover:not(:disabled) { background: #00b98d; border-color: #00b98d; }
 .actionButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; box-shadow: 0 0 0 3px rgba(0, 107, 84, 0.1); }
 .actionButton:active:not(:disabled) { transform: scale(0.98); }
-.messageInput { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: white; color: var(--ink); font-size: 14px; transition: all 0.15s ease-in-out; margin-right: 8px; margin-bottom: 0; }
+.actionButton.primaryCta { background: #1a1a4d; border-color: #1a1a4d; }
+.actionButton.primaryCta:hover:not(:disabled) { background: #27275f; border-color: #27275f; }
+.actionButton.secondaryCta { background: #e8e8f0; border-color: #e8e8f0; color: #1a1a2e; }
+.actionButton.secondaryCta:hover:not(:disabled) { background: #d5d5e3; border-color: #d5d5e3; }
+.messageInput { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: white; color: var(--ink); font-size: 14px; transition: all 0.15s ease-in-out; }
 .messageInput::placeholder { color: #6f7080; }
 .messageInput:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0, 201, 154, 0.1); }
 .messageInput:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
-.inputContainer { display: flex; gap: 8px; align-items: stretch; }
+.inputContainer { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .comparisonHint { padding: 10px 12px; margin-bottom: 10px; background: #f0f8f5; border: 1px solid var(--accent-soft); border-radius: 4px; }
 .comparisonHint p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .loadingIndicator { display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
@@ -194,9 +198,9 @@
   .messageInput { font-size: 16px; }
   .results { padding-top: 23px; }
   .emptyResults h2 br { display: none; }
-  .paymentSummary > strong { font-size: 36px; }
+  .paymentSummary > strong { font-size: 28px; }
   .comparisonCardLabel { font-size: 12px; }
-  .comparisonCardAmount { font-size: 24px; }
+  .comparisonCardAmount { font-size: 20px; }
   .comparisonCardSubtext { font-size: 12px; }
   .assumptions { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .assumptions dd { font-size: 10px; overflow-wrap: anywhere; }
