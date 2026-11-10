@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import styles from '@/styles/assistant.module.css'
 
 export interface MortgageInputs {
@@ -54,6 +55,7 @@ interface ChatbotProps {
 interface CtaPromptOption {
   label: string
   value: string
+  description?: string
 }
 
 interface CtaPrompt {
@@ -63,6 +65,7 @@ interface CtaPrompt {
 }
 
 const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotProps) => {
+  const router = useRouter()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -617,6 +620,54 @@ useEffect(() => {
       return
     }
     
+    // Handle explore affordability - ask which scenario
+    if (ctaPrompt.type === 'affordability_prompt' && value === 'explore_affordability') {
+      setMessages(prev => [...prev, {
+        role: 'user',
+        content: 'Explore affordability'
+      }, {
+        role: 'assistant',
+        content: 'Which scenario would you like to check for affordability?'
+      }])
+      
+      setCtaPrompt({
+        question: '',
+        type: 'scenario_selection_affordability',
+        options: [
+          { 
+            label: 'Original scenario', 
+            value: 'affordability_original',
+            description: comparisonContext ? `£${comparisonContext.originalInputs.price.toLocaleString()}, £${comparisonContext.originalInputs.deposit.toLocaleString()} deposit, ${comparisonContext.originalInputs.termYears} years @ ${comparisonContext.originalInputs.interestRate}%` : ''
+          },
+          { 
+            label: 'New scenario', 
+            value: 'affordability_scenario',
+            description: comparisonContext ? `£${comparisonContext.scenarioInputs.price.toLocaleString()}, £${comparisonContext.scenarioInputs.deposit.toLocaleString()} deposit, ${comparisonContext.scenarioInputs.termYears} years @ ${comparisonContext.scenarioInputs.interestRate}%` : ''
+          }
+        ]
+      })
+      return
+    }
+    
+    // Handle scenario selection for affordability
+    if (ctaPrompt.type === 'scenario_selection_affordability') {
+      if (comparisonContext) {
+        const scenario = value === 'affordability_original' 
+          ? comparisonContext.originalInputs 
+          : comparisonContext.scenarioInputs
+        
+        const params = new URLSearchParams({
+          price: scenario.price.toString(),
+          deposit: scenario.deposit.toString(),
+          term: scenario.termYears.toString(),
+          rate: scenario.interestRate.toString(),
+        })
+        
+        router.push(`/mortgage-affordability?${params.toString()}`)
+      }
+      return
+    }
+    
     const ctaMessage = `CTA_SELECTION:${ctaPrompt.type}:${value}`
     // If this is a deposit_amount_selection, attach lastInputs
     if (ctaPrompt.type === 'deposit_amount_selection' && lastInputs) {
@@ -684,7 +735,14 @@ useEffect(() => {
                   }`}
                   onClick={() => handleCtaSelection(opt.value)}
                 >
-                  {opt.label}
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontWeight: 500 }}>{opt.label}</div>
+                    {opt.description && (
+                      <div style={{ fontSize: '0.85em', opacity: 0.8, marginTop: '4px' }}>
+                        {opt.description}
+                      </div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
