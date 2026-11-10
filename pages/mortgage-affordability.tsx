@@ -378,7 +378,7 @@ const MortgageAffordability = () => {
                     <p className="text-2xl md:text-3xl font-bold text-navy">{money(monthlyPayment)}</p>
                   </div>
                   <div className="rounded-lg p-6 border bg-white border-light">
-                    <p className="text-xs font-semibold mb-2 text-gray-500">Monthly Income</p>
+                    <p className="text-xs font-semibold mb-2 text-gray-500">Disposable Income</p>
                     <p className="text-2xl md:text-3xl font-bold text-navy">{money(monthlyAffordable)}</p>
                   </div>
                   <div className="rounded-lg p-6 border bg-white border-light">
