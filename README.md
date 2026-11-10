@@ -1,17 +1,17 @@
-# Mortgage Calculator
+# Mortgage Assistant
 
-A conversational UK mortgage assistant built with Next.js 15's Pages Router, React, and TypeScript. Chat naturally with an AI assistant to explore mortgage scenarios, compare options, and understand your borrowing power through an intuitive multi-phase experience.
+A conversational UK mortgage assistant built with Next.js 15's Pages Router, React, and TypeScript. Chat naturally with an AI assistant to explore mortgage scenarios, compare options, and get detailed financial breakdowns through an intuitive conversational flow.
 
 ## Features
 
-- **Mortgage calculator:** Enter a property price, deposit, annual interest rate, and term to calculate an estimated monthly repayment, total paid, principal, and interest.
-- **Chatbot:** Ask mortgage questions conversationally. The assistant requests any missing calculation inputs and can calculate results once it has the property price, deposit, interest rate, and term.
-- **Scenario comparison:** Compare different mortgage scenarios side-by-side with detailed breakdowns showing monthly repayment changes, total interest differences, and a full comparison table.
-- **Chat bubbles:** Modern messaging interface with avatars and styled bubbles for a natural conversation feel.
-- **Shared results display:** Chatbot calculations appear in the same results panel as calculations from the form.
-- **Server-rendered form results:** The form uses a GET request, so its values are represented in the page URL and calculations are performed in `getServerSideProps`.
-
-![Mortgage Assistant](/public/images/mortgage-assistant.png)
+- **Conversational input collection:** Chat-based wizard collects property price, deposit, mortgage term, and interest rate with smart validation and easy error correction
+- **Scenario comparison:** Compare different mortgage scenarios side-by-side with monthly repayment changes, total interest differences, and detailed comparison tables
+- **Input validation:** Real-world constraints for property price (£50k-£2m), minimum deposit (10%), term (5-30 years), and interest rates (0.5-10%)
+- **Scenario suggestions:** Bot suggests pre-filled scenarios (e.g., "What if I increase deposit by £10k?" or "5% interest rate and 25 year term")
+- **Mobile-first responsive design:** Fully responsive UI with stacked input/button layout across all screen sizes
+- **Modern chat interface:** Clean, minimalist chat bubbles inspired by contemporary messaging apps (no avatars)
+- **Affordability prompts:** After each comparison, users can explore affordability based on income and outgoings
+- **Easy corrections:** "Go Back" button allows users to change any previously entered value without restarting
 
 ## Run locally
 
@@ -63,33 +63,57 @@ The repayment calculation assumes a fixed annual interest rate and regular month
 
 ## How the chatbot works
 
-1. The chat component keeps the conversation in React state for as long as that component remains mounted.
-2. On send, it posts the conversation to `POST /api/chatbot` as JSON. The browser does not call OpenAI directly.
-3. The API route sends the conversation to OpenAI using the `gpt-3.5-turbo` model and provides a `calculateMortgagePayment` function tool. The assistant is instructed to collect the four required values and use UK mortgage terminology and pounds sterling.
-4. If the assistant asks a follow-up question, the API returns its message and the chat displays it. When the assistant requests the calculation tool, the API parses the tool arguments, performs the calculation on the server, and returns both a confirmation message and the results.
-5. The chat passes those results to the page, which renders them in the mortgage results panel.
+1. The chat component (`Chatbot.tsx`) manages conversation state in React, including inputStage tracking for the multi-phase input collection
+2. During input collection (price → deposit → term → rate), the component validates locally with sensible business rules
+3. Smart input parser handles natural phrases like "deposit 90k" or "price 450000" without requiring exact keywords
+4. "Go Back" button lets users change any previous input by showing an edit menu (CTA type: `edit_inputs`)
+5. Once all 4 values are collected, the chat posts them to `POST /api/chatbot` along with conversation history
+6. The API route sends the request to OpenAI using the `gpt-3.5-turbo` model and provides `calculateMortgagePayment` and `compareMortgageScenario` function tools
+7. When the assistant uses a tool, the API performs the calculation server-side and returns results
+8. Results appear in the right panel; chat shows a dynamic benefit message explaining the comparison
+9. After comparison results, an affordability prompt offers "Explore affordability" or "Try another scenario"
+10. "Try another scenario" shows suggestion examples; "Explore affordability" is placeholder for future feature
 
-The tool is executed directly by the API route; this is not a general-purpose tool-execution loop. The chatbot currently calculates repayment, total cost, capital paid, and interest paid. Although its server calculation also derives an annual remaining balance, that figure is not sent to the chat results panel.
+## Input validation
+
+The chatbot validates all inputs before sending to OpenAI:
+
+- **Property price:** £50,000 - £2,000,000 (typical UK market range)
+- **Deposit:** Minimum 10% of property price (standard lender requirement)
+- **Mortgage term:** 5-30 years (UK lender constraints)
+- **Interest rate:** 0.5-10% (realistic market range including edge cases)
+
+Validation happens client-side during input collection. If a value is out of range, the bot shows a helpful message with the valid range and asks the user to try again.
+
+## Smart input parsing
+
+The parser extracts numbers from natural phrases:
+- "deposit 90k" → 90,000
+- "price 450000" → 450,000
+- "25 years" → 25
+- "4.5 percent" → 4.5
+
+Users can also enter values with K/M suffixes: "450k", "2.5m", etc.
 
 ## Project structure
 
 ```text
 pages/
-  index.tsx                    Home page linking to the calculator
-  mortgage-calculator.tsx      Calculator form and server-side calculation
-  api/chatbot.ts               OpenAI chat endpoint and calculation tool
+  index.tsx                    Home page with links to mortgage assistant
+  mortgage-assistant.tsx       Main app: chatbot + results panel with tabs
+  api/chatbot.ts               OpenAI chat endpoint and calculation tools
 components/
-  Chatbot/Chatbot.tsx          Chat UI and API client
-  MortgageResults/             Shared results display
+  Chatbot/Chatbot.tsx          Chat UI, input collection, validation, and API client
+  MortgageResults/             Results display component (shared by chat)
 utils/
   calculateRemainingBalance.ts Annual balance schedule helper
 styles/
-  globals.css                  Global Tailwind styles
+  assistant.module.css         Responsive layout, chat styling, mobile breakpoints
 ```
 
 ## Current scope
 
-- The **Remortgage** and **Interest Only** options are displayed in the form, but currently do not change the calculation. Both the form and chatbot use the standard repayment-mortgage formula.
-- Form calculations are rendered by the server from URL query values. Chatbot results are held in client state and are not saved; refreshing the page clears the conversation and chat-generated results.
-- The chatbot requires a valid `OPENAI_API_KEY`. If the key is missing or the OpenAI request fails, the API route returns an error and the chat displays a generic failure message.
+- Results are held in client state and not persisted; refreshing the page clears chat history
+- Chatbot requires a valid `OPENAI_API_KEY` in `.env.local`; missing or invalid keys cause graceful error messages
+- Affordability feature is placeholder; future implementation planned
 - This is an informational calculator, not financial advice or a mortgage offer. Users should confirm figures with a qualified adviser or lender.
