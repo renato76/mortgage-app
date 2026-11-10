@@ -13,29 +13,6 @@ const currency = new Intl.NumberFormat('en-GB', {
 })
 const money = (value: number) => currency.format(value)
 
-const buildComparisonDescription = (comparison: MortgageComparison): string => {
-  const { scenarioInputs, delta } = comparison
-  const changed: string[] = []
-  
-  if (scenarioInputs.deposit !== comparison.originalInputs.deposit) {
-    changed.push(`£${scenarioInputs.deposit.toLocaleString()} deposit`)
-  }
-  if (scenarioInputs.interestRate !== comparison.originalInputs.interestRate) {
-    changed.push(`${scenarioInputs.interestRate}% rate`)
-  }
-  if (scenarioInputs.termYears !== comparison.originalInputs.termYears) {
-    changed.push(`${scenarioInputs.termYears} year term`)
-  }
-  if (scenarioInputs.price !== comparison.originalInputs.price) {
-    changed.push(`£${scenarioInputs.price.toLocaleString()} property`)
-  }
-  
-  const direction = delta.totalInterest < 0 ? 'saved' : 'additional'
-  const interestAmount = money(Math.abs(delta.totalInterest))
-  
-  return `Total ${direction} interest over the term: ${interestAmount}`
-}
-
 const comparisonTitles = {
   deposit: 'Deposit comparison',
   term: 'Mortgage term comparison',
