@@ -11,7 +11,7 @@ A conversational UK mortgage assistant built with Next.js 15's Pages Router, Rea
 - **Shared results display:** Chatbot calculations appear in the same results panel as calculations from the form.
 - **Server-rendered form results:** The form uses a GET request, so its values are represented in the page URL and calculations are performed in `getServerSideProps`.
 
-![Mortgage Assistant](/mortgage-assistant.png)
+![Mortgage Assistant](/public/images/mortgage-assistant.png)
 
 ## Run locally
 
