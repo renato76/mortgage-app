@@ -367,7 +367,7 @@ const MortgageAffordability = () => {
                   <p className="text-lg mb-4 text-gray-500">
                     vs {money(scenario.price)} for this property
                   </p>
-                  <p className="text-sm" style={{ color: isAffordable ? '#00BD98' : '#E74C3C' }}>
+                  <p className={`text-sm ${isAffordable ? 'text-teal' : 'text-red-error'}`}>
                     {isAffordable ? '✓ You can afford this mortgage' : '✗ This mortgage may be stretching'}
                   </p>
                 </div>
@@ -383,7 +383,7 @@ const MortgageAffordability = () => {
                   </div>
                   <div className="rounded-lg p-6 border bg-white border-light">
                     <p className="text-xs font-semibold mb-2 text-gray-500">Remaining Monthly</p>
-                    <p className="text-2xl md:text-3xl font-bold" style={{ color: remainingAfterMortgage > 0 ? '#00BD98' : '#E74C3C' }}>{money(remainingAfterMortgage)}</p>
+                    <p className={`text-2xl md:text-3xl font-bold ${remainingAfterMortgage > 0 ? 'text-teal' : 'text-red-error'}`}>{money(remainingAfterMortgage)}</p>
                   </div>
                 </div>
 
@@ -401,7 +401,7 @@ const MortgageAffordability = () => {
                     <div className="pt-3 border-t border-light">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-500">Remaining monthly income</span>
-                        <strong style={{ color: remainingAfterMortgage > 0 ? '#00BD98' : '#E74C3C' }}>{money(remainingAfterMortgage)}</strong>
+                        <strong className={remainingAfterMortgage > 0 ? 'text-teal' : 'text-red-error'}>{money(remainingAfterMortgage)}</strong>
                       </div>
                     </div>
                   </div>

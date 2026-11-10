@@ -5,10 +5,6 @@ import {
   MortgageValidationError,
 } from '../../utils/calculateMortgageDetails'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini'
 const compactPounds = (value: number) => new Intl.NumberFormat('en-GB', {
   style: 'currency', currency: 'GBP', notation: 'compact', minimumFractionDigits: 0, maximumFractionDigits: 1,
@@ -224,6 +220,15 @@ export default async function handler(
   }
 
   try {
+    // Initialize OpenAI client with env var check
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OpenAI API key not configured' })
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+
     // HANDLE CTA SELECTIONS FIRST (before calling OpenAI)
     const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user')
     const hasComparisonIntent = Boolean(latestUserMessage && /\bcompare\b/i.test(latestUserMessage.content))
