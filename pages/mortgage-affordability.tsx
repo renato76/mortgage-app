@@ -101,36 +101,37 @@ const MortgageAffordability = () => {
               <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm">
                 <button 
                   onClick={() => setStep('mortgage_summary')}
-                  className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full font-semibold text-white transition cursor-pointer hover:opacity-80"
-                  style={{ backgroundColor: isCurrentStep('mortgage_summary') ? '#100638' : isCompletedStep('mortgage_summary') ? '#00BD98' : '#D1D1D8' }}
+                  className={`flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full font-semibold text-white transition cursor-pointer hover:opacity-80 ${
+                    isCurrentStep('mortgage_summary') ? 'bg-navy' : isCompletedStep('mortgage_summary') ? 'bg-teal' : 'bg-teal-light'
+                  }`}
                 >
                   {isCompletedStep('mortgage_summary') ? '✓' : '1'}
                 </button>
                 <span className="hidden md:inline text-gray-500">Mortgage details</span>
                 
                 <div 
-                  className="flex-1 h-0.5 transition"
-                  style={{ backgroundColor: isCurrentStep('mortgage_summary') ? '#D1D1D8' : '#00BD98' }}
+                  className={`flex-1 h-0.5 transition ${isCurrentStep('mortgage_summary') ? 'bg-teal-light' : 'bg-teal'}`}
                 />
                 
                 <button 
                   onClick={() => setStep('household_income')}
-                  className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full font-semibold text-white transition cursor-pointer hover:opacity-80"
-                  style={{ backgroundColor: isCurrentStep('household_income') ? '#100638' : isCompletedStep('household_income') ? '#00BD98' : '#D1D1D8' }}
+                  className={`flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full font-semibold text-white transition cursor-pointer hover:opacity-80 ${
+                    isCurrentStep('household_income') ? 'bg-navy' : isCompletedStep('household_income') ? 'bg-teal' : 'bg-teal-light'
+                  }`}
                 >
                   {isCompletedStep('household_income') ? '✓' : '2'}
                 </button>
                 <span className="hidden md:inline text-gray-500">Finances</span>
                 
                 <div 
-                  className="flex-1 h-0.5 transition"
-                  style={{ backgroundColor: isCurrentStep('results') || isCompletedStep('results') ? '#00BD98' : '#D1D1D8' }}
+                  className={`flex-1 h-0.5 transition ${isCurrentStep('results') || isCompletedStep('results') ? 'bg-teal' : 'bg-teal-light'}`}
                 />
                 
                 <button 
                   onClick={() => setStep('results')}
-                  className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full font-semibold text-white transition cursor-pointer hover:opacity-80"
-                  style={{ backgroundColor: isCurrentStep('results') ? '#100638' : isCompletedStep('results') ? '#00BD98' : '#D1D1D8' }}
+                  className={`flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full font-semibold text-white transition cursor-pointer hover:opacity-80 ${
+                    isCurrentStep('results') ? 'bg-navy' : isCompletedStep('results') ? 'bg-teal' : 'bg-teal-light'
+                  }`}
                 >
                   3
                 </button>
@@ -326,7 +327,7 @@ const MortgageAffordability = () => {
 
                 <div className="rounded-lg p-6 mb-2 bg-mint">
                   <p className="text-sm font-medium mb-1 text-navy">Your disposable income</p>
-                  <p className="text-2xl font-bold" style={{ color: disposableIncome > 0 ? '#00BD98' : '#E74C3C' }}>
+                  <p className={`text-2xl font-bold ${disposableIncome > 0 ? 'text-teal' : 'text-red-error'}`}>
                     {money(Math.max(0, disposableIncome))} per month
                   </p>
                   <p className="text-xs mt-2 text-gray-500">
