@@ -137,7 +137,6 @@
   max-width: 100%;
   padding: 10px 14px;
   border-radius: 16px;
-  /* overflow-wrap: break-word; */
   white-space: pre-wrap;
 }
 .message.userMessage .messageBubble { background: #d4e5ff; color: #1a1a2e; border-radius: 16px 4px 16px 16px; order: 1; }
