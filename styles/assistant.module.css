@@ -127,7 +127,7 @@
 .resetButton { font-size: 12px; font-weight: 600; padding: 6px 12px; border: 1px solid var(--line); border-radius: 3px; background: #f0f1f5; color: var(--ink); cursor: pointer; transition: all 0.15s ease-in-out; white-space: nowrap; }
 .resetButton:hover { background: #e5e7f0; border-color: #c5c9d5; }
 .resetButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
-.chatLog { height: 480px; overflow-y: auto; overscroll-behavior: contain; background: white; padding: 12px; margin-bottom: 12px; border-radius: 6px; }
+.chatLog { min-height: 200px; max-height: 480px; overflow-y: auto; overscroll-behavior: contain; background: white; padding: 12px; margin-bottom: 12px; border-radius: 6px; }
 .message { display: flex; gap: 0; font-size: 14px; line-height: 1.5; margin-bottom: 8px; align-items: flex-end; }
 .message.userMessage { justify-content: flex-end; }
 .messageAvatar { display: none; }
@@ -196,7 +196,7 @@
   .estimateBadge { display: none; }
   .workspace { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .chatbot { padding: 14px; }
-  .chatLog { height: 340px; }
+  .chatLog { min-height: 180px; max-height: 340px; }
   .message { gap: 8px; }
   .messageBubble { max-width: 90%; padding: 10px 12px; font-size: 13px; }
   .messageAvatar { width: 24px; height: 24px; font-size: 11px; }

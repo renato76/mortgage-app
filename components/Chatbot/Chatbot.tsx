@@ -786,7 +786,14 @@ useEffect(() => {
           disabled={loading}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={inputStage === 'price' || inputStage === 'deposit' || inputStage === 'term' || inputStage === 'rate' ? `Enter ${inputStage}...` : (inputStage === 'comparison_prompt' || inputStage === 'comparison_results') ? "Compare witha different scenario..." : "Ask about mortgages..."}
+          placeholder={
+            inputStage === 'price' ? 'Enter price e.g. 300K...' :
+            inputStage === 'deposit' ? 'Enter deposit e.g. 50K...' :
+            inputStage === 'term' ? 'Enter term (e.g. 25)...' :
+            inputStage === 'rate' ? 'Enter rate (e.g. 4.5%)...' :
+            (inputStage === 'comparison_prompt' || inputStage === 'comparison_results') ? "Compare with a different scenario..." :
+            "Ask about mortgages..."
+          }
           className={styles.messageInput}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
         />
