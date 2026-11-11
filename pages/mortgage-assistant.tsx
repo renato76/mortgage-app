@@ -64,7 +64,7 @@ const MortgageAssistant = () => {
         </div>
       </header>
       <main className={styles.main}>
-        <div className={styles.pageHeading}><div><p className={styles.eyebrow}>YOUR HOME. YOUR NUMBERS.</p><h1>A clearer view of your mortgage.</h1></div></div>
+        <div className={styles.pageHeading}><div><h1>A clearer view of your mortgage.</h1></div></div>
         <div className={styles.workspace}>
           <section id="conversation" className={styles.conversationSection} aria-label="Mortgage conversation">
             <Chatbot key={resetKey} setChatbotResults={handleCalculation} setComparison={handleComparison} />

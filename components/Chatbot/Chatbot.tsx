@@ -92,17 +92,11 @@ const Chatbot = ({ setChatbotResults, setComparison, initialInputs }: ChatbotPro
     scenarioInputs: MortgageInputs
   } | null>(null)
 
-  const welcomeMessage = `Welcome to your Mortgage Assistant
+  const welcomeMessage = `Welcome to your Mortgage Assistant.
 
-I can help you explore different mortgage scenarios.
+I can help you explore mortgage repayments and compare different scenarios.
 
-To get started, I will require these four details:
-• Property price
-• Deposit
-• Mortgage term
-• Interest rate
-
-So first of all, what's the property price?`
+Let's start with the property price. How much are you looking to spend?`
 
 useEffect(() => {
   if (messages.length === 0) {
