@@ -210,7 +210,7 @@ const MortgageAffordability = () => {
                 </div>
 
                 <div 
-                  className="rounded-lg p-6 md:p-8 border bg-white border-light"
+                  className="rounded-lg p-4 border bg-white border-light"
                 >
                   <label className="block text-sm font-medium mb-2 text-navy">
                     What is your total household income (after tax) per month?
