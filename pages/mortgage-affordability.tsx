@@ -81,15 +81,15 @@ const MortgageAffordability = () => {
     <>
       <Head><title>Mortgage Affordability</title></Head>
       <div className="min-h-screen flex flex-col bg-page-bg">
-        <header className="border-b border-light">
-          <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-navy" />
-              <span className="font-semibold text-navy">Mortgage Assistant</span>
-            </div>
+        <header className="bg-navy border-b border-navy">
+          <div className="max-w-full mx-auto px-9 py-0 flex items-center justify-between gap-5" style={{ maxWidth: '1240px', minHeight: '80px' }}>
+            <Link href="/mortgage-assistant" className="flex items-center gap-2.5 text-teal hover:opacity-80" style={{ fontSize: '19px', fontWeight: 650 }}>
+              <div className="w-2 h-6 bg-teal rounded-sm" style={{ transform: 'skewY(-15deg)' }} />
+              <span>Mortgage Affordability</span>
+            </Link>
             <Link 
               href="/mortgage-assistant" 
-              className="text-sm font-medium hover:opacity-80 transition text-navy"
+              className="text-sm font-medium hover:opacity-80 transition text-teal"
             >
               Back to assistant →
             </Link>
