@@ -142,13 +142,13 @@
 .userMessage strong { color: var(--ink); }
 .chatChoices { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
 .chatChoices > p { font-size: 13px; font-weight: 550; line-height: 1.7; margin-bottom: 10px; }
-.chatChoiceOptions { display: flex; flex-wrap: wrap; gap: 8px; }
-.actionButton { border: 1px solid var(--accent); border-radius: 4px; padding: 10px 14px; min-height: 44px; background: var(--accent); color: white; font-size: 13px; font-weight: 600; line-height: 1.4; white-space: nowrap; transition: all 0.15s ease-in-out; flex-shrink: 0; }
-.actionButton:hover:not(:disabled) { background: #00b98d; border-color: #00b98d; }
-.actionButton:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; box-shadow: 0 0 0 3px rgba(0, 107, 84, 0.1); }
+.chatChoiceOptions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.actionButton { border: 1px solid #6366f1; border-radius: 4px; padding: 12px 16px; min-height: 44px; background: #6366f1; color: white; font-size: 13px; font-weight: 600; line-height: 1.4; transition: all 0.15s ease-in-out; flex: 1 1 100%; text-align: left; }
+.actionButton:hover:not(:disabled) { background: #4f46e5; border-color: #4f46e5; }
+.actionButton:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
 .actionButton:active:not(:disabled) { transform: scale(0.98); }
-.actionButton.primaryCta { background: #1a1a4d; border-color: #1a1a4d; }
-.actionButton.primaryCta:hover:not(:disabled) { background: #27275f; border-color: #27275f; }
+.actionButton.primaryCta { background: #6366f1; border-color: #6366f1; }
+.actionButton.primaryCta:hover:not(:disabled) { background: #4f46e5; border-color: #4f46e5; }
 .actionButton.secondaryCta { background: #e8e8f0; border-color: #e8e8f0; color: #1a1a2e; }
 .actionButton.secondaryCta:hover:not(:disabled) { background: #d5d5e3; border-color: #d5d5e3; }
 .messageInput { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; background: white; color: var(--ink); font-size: 14px; transition: all 0.15s ease-in-out; }

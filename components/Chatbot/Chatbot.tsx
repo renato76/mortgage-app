@@ -637,12 +637,12 @@ useEffect(() => {
         type: 'scenario_selection_affordability',
         options: [
           { 
-            label: 'Original scenario', 
+            label: 'Initial scenario', 
             value: 'affordability_original',
             description: comparisonContext ? `£${comparisonContext.originalInputs.price.toLocaleString()}, £${comparisonContext.originalInputs.deposit.toLocaleString()} deposit, ${comparisonContext.originalInputs.termYears} years @ ${comparisonContext.originalInputs.interestRate}%` : ''
           },
           { 
-            label: 'New scenario', 
+            label: 'Alternative scenario', 
             value: 'affordability_scenario',
             description: comparisonContext ? `£${comparisonContext.scenarioInputs.price.toLocaleString()}, £${comparisonContext.scenarioInputs.deposit.toLocaleString()} deposit, ${comparisonContext.scenarioInputs.termYears} years @ ${comparisonContext.scenarioInputs.interestRate}%` : ''
           }
