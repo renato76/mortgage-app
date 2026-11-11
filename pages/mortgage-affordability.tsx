@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -39,6 +39,13 @@ const MortgageAffordability = () => {
 
   const totalMonthlyExpenses = expenses.rent + expenses.childcare + expenses.debts + expenses.other
   const disposableIncome = householdIncome - totalMonthlyExpenses
+
+  // Scroll to top when results are displayed
+  useEffect(() => {
+    if (step === 'results') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [step])
 
   const scenario: MortgageInputs = {
     price: price ? Number(price) : 0,
@@ -90,8 +97,8 @@ const MortgageAffordability = () => {
         </header>
 
         <main className="flex-1">
-          <div className="max-w-2xl mx-auto px-6 py-12">
-            <div className="mb-12">
+          <div className="max-w-2xl mx-auto px-6 py-6">
+            <div className="mb-8">
               <p className="text-xs font-semibold tracking-wide mb-2 text-gray-500">AFFORDABILITY CHECK</p>
               <h1 className="text-3xl md:text-4xl font-bold text-navy">Can you afford this mortgage?</h1>
             </div>

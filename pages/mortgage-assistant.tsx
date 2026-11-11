@@ -62,7 +62,6 @@ const MortgageAssistant = () => {
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div className={styles.wordmark}><span className={styles.brandMark} aria-hidden="true" /><span>Mortgage Assistant</span></div>
-          <Link href="/mortgage-calculator" className={styles.calculatorLink}>Mortgage calculator <span aria-hidden="true">&rarr;</span></Link>
         </div>
       </header>
       <main className={styles.main}>

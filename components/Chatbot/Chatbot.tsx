@@ -734,6 +734,8 @@ useEffect(() => {
                     opt.value === 'explore_affordability' ? styles.primaryCta : ''
                   } ${
                     opt.value === 'try_another_scenario' ? styles.secondaryCta : ''
+                  } ${
+                    opt.value === 'affordability_original' || opt.value === 'affordability_scenario' ? styles.scenarioSelection : ''
                   }`}
                   onClick={() => handleCtaSelection(opt.value)}
                 >
