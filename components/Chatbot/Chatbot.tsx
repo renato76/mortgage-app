@@ -144,6 +144,23 @@ useEffect(() => {
     }
   }, [messages, ctaPrompt])
 
+  // Scroll to comparison details on mobile when comparison is generated
+  useEffect(() => {
+    if (comparisonContext && typeof window !== 'undefined' && window.innerWidth < 768 && chatLogRef.current) {
+      setTimeout(() => {
+        const messages = document.querySelectorAll(`.${styles.message}`)
+        // Find the message containing comparison details (e.g. "With a rate of")
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const msg = messages[i]
+          if (msg.textContent?.includes('With a') || msg.textContent?.includes('monthly payment')) {
+            msg.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            break
+          }
+        }
+      }, 100)
+    }
+  }, [comparisonContext])
+
   // Clean up retry timeout on unmount
   useEffect(() => {
     return () => {

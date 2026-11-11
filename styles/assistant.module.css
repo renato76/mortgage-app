@@ -131,7 +131,15 @@
 .message { display: flex; gap: 0; font-size: 14px; line-height: 1.5; margin-bottom: 8px; align-items: flex-end; }
 .message.userMessage { justify-content: flex-end; }
 .messageAvatar { display: none; }
-.messageBubble { display: flex; flex-direction: column; max-width: 80%; padding: 10px 14px; border-radius: 16px; word-wrap: break-word; white-space: pre-wrap; }
+.messageBubble {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  /* overflow-wrap: break-word; */
+  white-space: pre-wrap;
+}
 .message.userMessage .messageBubble { background: #d4e5ff; color: #1a1a2e; border-radius: 16px 4px 16px 16px; order: 1; }
 .message:not(.userMessage) .messageBubble { background: #f0f0f5; color: #1a1a2e; border-radius: 4px 16px 16px 16px; order: 2; border: none; }
 .messageBubble strong { font-weight: 650; }
@@ -199,6 +207,7 @@
   .chatLog { min-height: 180px; max-height: 340px; }
   .message { gap: 8px; }
   .messageBubble { max-width: 90%; padding: 10px 12px; font-size: 13px; }
+  .message.userMessage .messageBubble { max-width: none; }
   .messageAvatar { width: 24px; height: 24px; font-size: 11px; }
   .messageInput { font-size: 16px; }
   .results { padding-top: 23px; }
