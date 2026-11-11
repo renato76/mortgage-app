@@ -70,7 +70,7 @@ const MortgageAssistant = () => {
             <Chatbot key={resetKey} setChatbotResults={handleCalculation} setComparison={handleComparison} />
           </section>
           {(chatbotResults || comparison) && (
-            <aside className={styles.results} aria-label="Mortgage results" aria-live="polite">
+            <aside id="mortgage-results" className={styles.results} aria-label="Mortgage results" aria-live="polite">
             {comparison && (
               <div className={styles.resultTabsContainer}>
                 <div className={styles.resultTabs} role="group" aria-label="Results view">

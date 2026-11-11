@@ -14,6 +14,7 @@ interface ChatMessage {
   content: string
   originalInputs?: MortgageInputs
   scenarioInputs?: MortgageInputs
+  showResultsLink?: boolean
 }
 
 export interface ChatbotMortgageResults {
@@ -322,14 +323,22 @@ useEffect(() => {
         }
         
         if (benefit) {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `Great! ${benefit}\n\nWould you also like to explore whether this mortgage could be affordable based on your income and monthly outgoings?`
-          }])
+          setMessages(prev => [...prev, 
+            {
+              role: 'assistant',
+              content: `Great! ${benefit}`,
+              showResultsLink: true
+            },
+            {
+              role: 'assistant',
+              content: 'Would you also like to explore whether this mortgage could be affordable based on your income and monthly outgoings?'
+            }
+          ])
         } else {
           setMessages(prev => [...prev, {
             role: 'assistant',
-            content: 'Would you like to explore whether this mortgage could be affordable based on your income and monthly outgoings?'
+            content: 'Would you like to explore whether this mortgage could be affordable based on your income and monthly outgoings?',
+            showResultsLink: true
           }])
         }
         
@@ -697,8 +706,18 @@ useEffect(() => {
               <div className={styles.messageAvatar}>
                 {msg.role === 'user' ? 'You' : 'A'}
               </div>
-              <div className={styles.messageBubble}>
-                {msg.content}
+              <div>
+                <div className={styles.messageBubble}>
+                  {msg.content}
+                </div>
+                {msg.role === 'assistant' && (msg.content.includes("I've calculated your mortgage details") || msg.showResultsLink) && (
+                  <a
+                    href="#mortgage-results"
+                    className="inline-block text-sm font-semibold text-teal underline underline-offset-2 md:hidden mt-4 mb-2"
+                  >
+                    See your mortgage results ↓
+                  </a>
+                )}
               </div>
             </div>
           ))}
